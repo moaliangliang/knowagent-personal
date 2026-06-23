@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Swift binaries
+swift/ax_inspector
+swift/screen_ocr
+swift/menubar
+swift/hotkey
+~/.knowagent/bin/
+
+# Local state
+.knowagent/
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
