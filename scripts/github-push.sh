@@ -8,7 +8,23 @@
 # 查看当前代理
 git config --global --get http.proxy
 
-# 设置代理（ClashX 默认端口，根据你的代理软件调整）
+# 查看项目配置中的代理设置
+cat ~/.knowagent/config.yaml 2>/dev/null | grep -A5 proxy || echo "未找到代理配置，请先运行: ka vpn_status action=enable"
+
+# 从代理配置自动设置 git proxy（如已启用 VPN）
+# 以下命令会自动读取 ~/.knowagent/config.yaml 中的代理设置
+# 先启用 VPN: ka vpn_status action=enable
+# 然后运行:
+#   PROXY=$(grep -A2 '^proxy:' ~/.knowagent/config.yaml | grep 'http:' | awk '{print $2}' | head -1)
+#   if [ -n "$PROXY" ] && [ "$PROXY" != "false" ]; then
+#     git config --global http.proxy $PROXY
+#     git config --global https.proxy $PROXY
+#     echo "✅ Git 代理已设置为: $PROXY"
+#   else
+#     echo "⏸  代理未启用，跳过设置"
+#   fi
+
+# 手动设置代理（ClashX 默认端口，根据你的代理软件调整）
 # git config --global http.proxy http://127.0.0.1:7890
 # git config --global https.proxy http://127.0.0.1:7890
 
@@ -24,7 +40,7 @@ git config --global --get http.proxy
 # ssh-keygen -t ed25519 -C "your_email@example.com"
 
 # 添加到 ssh-agent
-# eval "$(agent -s)"
+# eval "$(ssh-agent -s)"
 # ssh-add ~/.ssh/id_ed25519
 
 # 复制公钥，打开 https://github.com/settings/keys 添加
@@ -52,3 +68,5 @@ git push -u origin main
 
 # 打开浏览器访问
 # https://github.com/moaliangliang/knowagent-personal
+
+

@@ -8,25 +8,34 @@ from typing import Any
 from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
 
 SYSTEM_PROMPT = """你是 Mac Agent Personal，一个本地运行的 Mac 桌面 AI 助手。
-你有 30 多个本地命令可以控制 Mac 系统，包括：
+你有 70 多个本地命令可以控制 Mac 系统，包括：
 
 - 系统状态查询（CPU/内存/磁盘/网络/电池/WiFi）
+- 系统控制（屏幕亮度、音量、睡眠、关机、重启、屏保、专注模式）
 - 音乐控制（Apple Music 搜索、播放、音量、下一首）
 - 邮件读取和发送（Mail.app + 邮箱大师）
-- 截图和 OCR 文字识别
-- 剪贴板读写
+- 截图和 OCR 文字识别（截屏分析 + 文件 OCR）
+- 剪贴板读写及历史记录
 - 日历事件查询
 - UI 自动化（查看界面树、查找元素、点击按钮）
 - 键盘模拟（输入文字、按键）
-- 文件浏览
+- 文件浏览、文件搜索（Spotlight）、文件内容搜索（grep）
+- 文件压缩/解压、图片格式转换、重复文件检测
 - 联系人搜索
 - 提醒事项添加
 - 备忘录查看
 - 语音朗读
+- 语音输入（听用户说话）
 - 屏幕锁定
 - 多步工作流执行
 - 个人知识库搜索（查询索引过的本地文档/笔记）
-- 语音输入（听用户说话）
+- VPN 管理（深信服 aTrust / FortiGate 连接检测、代理管理）
+- 网络工具（公网 IP、网速测试、HTTP 请求、文件下载、Whois、Ping、端口检查）
+- 开发工具（Homebrew 管理、进程管理、Docker）
+- 媒体处理（录屏、录音、视频信息提取）
+- 效率工具（倒计时/番茄钟、文本翻译、快捷指令调用）
+- AI 对话、文本摘要、代码审查、图片生成
+- 系统监控（磁盘空间预警、电池健康度、CPU 温度）
 
 规则：
 1. 在需要执行操作时，请使用提供的工具。
@@ -49,24 +58,26 @@ class Agent:
         self.conversation_id = str(uuid.uuid4())[:8]
         self.rag = None
 
-        # Init RAG
-        self._init_rag()
+        # 注意: RAG 改为懒加载，启动时不初始化（避免 ChromaDB 加载过慢）
+        # 首次需要时通过 _ensure_rag() 自动初始化
 
         # Load conversation history from SQLite
         self._load_history()
 
-    def _init_rag(self):
-        """Initialize personal RAG."""
+    def _ensure_rag(self):
+        """懒加载 RAG（需要时才初始化）"""
+        if self.rag is not None:
+            return True
         try:
             from knowagent_personal.memory.rag import PersonalRAG
-
             self.rag = PersonalRAG(self.config)
             if self.rag.init():
                 from knowagent_personal.agent.tools import set_rag
-
                 set_rag(self.rag)
+                return True
         except Exception:
             self.rag = None
+        return False
 
     def _load_history(self):
         """Load recent conversation history from SQLite."""

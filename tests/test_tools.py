@@ -33,8 +33,8 @@ def test_windchill_removed():
 
 
 def test_31_commands():
-    """Should have at least 30 commands."""
-    assert len(COMMANDS) >= 30, f"Only {len(COMMANDS)} commands registered"
+    """Should have at least 77 commands (base + all module commands)."""
+    assert len(COMMANDS) >= 77, f"Only {len(COMMANDS)} commands registered"
 
 
 def test_tool_definitions_generated():

@@ -1,6 +1,7 @@
 """LLM Client - Ollama and OpenAI-compatible API with tool calling support."""
 
 import json
+import os
 import time
 from typing import Any
 
@@ -16,6 +17,26 @@ class LLMClient:
         self.model = config.get("llm.model", "qwen2.5:7b")
         self.api_key = config.get("llm.api_key", "")
         self.base_url = config.get("llm.base_url", "")
+        # Proxy settings
+        self._proxies = config.get_proxies()
+        self._apply_proxy_env()
+
+    def _apply_proxy_env(self):
+        """Set HTTP_PROXY/HTTPS_PROXY env vars so requests & openai lib both pick them up."""
+        if not self._proxies:
+            # Clear if proxy was previously set but now disabled
+            for var in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "NO_PROXY", "no_proxy"):
+                os.environ.pop(var, None)
+            return
+        if "http" in self._proxies:
+            os.environ["HTTP_PROXY"] = self._proxies["http"]
+            os.environ["http_proxy"] = self._proxies["http"]
+        if "https" in self._proxies:
+            os.environ["HTTPS_PROXY"] = self._proxies["https"]
+            os.environ["https_proxy"] = self._proxies["https"]
+        if self._proxies.get("no_proxy"):
+            os.environ["NO_PROXY"] = self._proxies["no_proxy"]
+            os.environ["no_proxy"] = self._proxies["no_proxy"]
 
     def check_available(self) -> tuple[bool, str]:
         """Check if LLM is reachable. Returns (ok, message)."""
@@ -26,7 +47,7 @@ class LLMClient:
 
     def _check_ollama(self) -> tuple[bool, str]:
         try:
-            r = requests.get(f"{self.ollama_url}/api/tags", timeout=3)
+            r = requests.get(f"{self.ollama_url}/api/tags", timeout=3, proxies=self._proxies)
             if r.status_code == 200:
                 models = [m["name"] for m in r.json().get("models", [])]
                 if self.model in models:
@@ -85,7 +106,7 @@ class LLMClient:
             payload["tools"] = tools
 
         try:
-            resp = requests.post(url, json=payload, timeout=120)
+            resp = requests.post(url, json=payload, timeout=120, proxies=self._proxies)
             resp.raise_for_status()
             return resp.json()
         except requests.ConnectionError:

@@ -15,6 +15,7 @@ from knowagent_personal.agent.tools import COMMANDS, cmd_system_status, cmd_musi
 from knowagent_personal.agent.core import Agent
 from knowagent_personal.agent.llm import LLMClient
 from knowagent_personal.config import Config, CONFIG_DIR
+from knowagent_personal.agent.aliases import resolve_cn
 
 
 # ── 颜色 ──────────────────────────────────────────────────
@@ -47,6 +48,10 @@ class Color:
 
 # ── 自然语言解析器 ──────────────────────────────────────
 
+# TODO: 逐步迁移到 aliases.py CN_ALIASES 和 IN_ALIASES
+# 简单映射（无参数提取需求）已移至 CN_ALIASES。
+# 剩下的规则多数需要 _parse_mail_date 等参数提取逻辑，
+# 待 aliases.py 支持参数提取后再整体迁移。
 NL_RULES = [
     (["播放", "听", "唱", "放", "music"], lambda kw: ("music_search_online", {"keyword": kw or "随机"})),
     (["搜索", "搜", "find", "查找", "search"], lambda kw: ("music_search_online", {"keyword": kw}) if kw else ("help", {})),
@@ -115,6 +120,25 @@ def parse_natural(text: str):
     if text in COMMANDS:
         return (text, {})
 
+    # 检查中文别名（支持 "翻译 text=hello" 格式）
+    resolved = resolve_cn(text)
+    if resolved:
+        cmd_name, rest = resolved
+        params = {}
+        if rest:
+            try:
+                for part in shlex.split(rest):
+                    if "=" in part:
+                        k, v = part.split("=", 1)
+                        params[k] = v
+                    else:
+                        params["keyword"] = part
+                        params["text"] = part  # bare text 同时作为 text
+            except Exception:
+                params["keyword"] = rest
+                params["text"] = rest
+        return (cmd_name, params)
+
     for cmd_name in COMMANDS:
         if text.startswith(cmd_name + " "):
             rest = text[len(cmd_name) + 1:].strip()
@@ -125,19 +149,38 @@ def parse_natural(text: str):
                     params[k] = v
                 else:
                     params["keyword"] = part
+                    params["text"] = part  # bare text 同时作为 text
             return (cmd_name, params)
 
     if "工作流" in text or "workflow" in text.lower():
         return ("_workflow", {})
 
+    import re as _re
     for keywords, handler in NL_RULES:
         for kw in keywords:
-            if kw in text.lower():
+            # 中文关键字：前缀匹配（"系统"在句子开头/中间都触发）
+            # 英文关键字：整词匹配（避免 "h" 匹配 "hello"）
+            if _re.search(r'[一-鿿]', kw):
+                if kw in text:
+                    _matched = True
+                else:
+                    _matched = False
+            else:
+                if _re.search(r'(?<!\w)' + _re.escape(kw.lower()) + r'(?!\w)', text.lower()):
+                    _matched = True
+                else:
+                    _matched = False
+
+            if _matched:
                 rest = text
                 for k in keywords:
-                    if k in rest.lower():
-                        idx = rest.lower().find(k)
-                        rest = (rest[:idx] + rest[idx + len(k):]).strip()
+                    if _re.search(r'[一-鿿]', k):
+                        if k in rest:
+                            rest = rest.replace(k, "", 1).strip()
+                    else:
+                        m = _re.search(r'(?<!\w)' + _re.escape(k.lower()) + r'(?!\w)', rest.lower())
+                        if m:
+                            rest = (rest[:m.start()] + rest[m.end():]).strip()
                 if callable(handler):
                     result = handler(rest)
                     if result:
@@ -153,11 +196,6 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history")
 
 
 class PersonalAgentREPL(cmd.Cmd):
-    intro = (
-        f"\n{Color.bold('🤖 Mac Agent Personal REPL')}\n"
-        f"{Color.dim('输入 help 查看帮助, exit 退出, 或直接说你想做什么')}\n"
-        f"{Color.dim('例如: 播放周杰伦的歌 | 系统状态 | 截图 | 你好')}\n"
-    )
     prompt = f"{Color.info('› ')}"
 
     def __init__(self, config: Config, interactive=True):
@@ -170,6 +208,27 @@ class PersonalAgentREPL(cmd.Cmd):
 
         # Load plugins
         self._load_plugins()
+
+        # Set language-aware intro
+        from knowagent_personal.agent.help_text import get_system_lang
+        lang = get_system_lang()
+        cmd_count = len(COMMANDS)
+        if lang == "zh":
+            self.intro = (
+                f"\n{Color.bold('🤖 Mac Agent Personal  —  本地 Mac 桌面 AI 助手')}\n"
+                f"{Color.dim('╶' * 40)}\n"
+                f"  {Color.info('●')}  {cmd_count} 个系统命令  {Color.info('●')}  中文/英文双语言  {Color.info('●')}  OpenAI/Ollama\n"
+                f"  {Color.dim('输入')} {Color.bold('help')} {Color.dim('查看所有命令')}   {Color.bold('exit')} {Color.dim('退出')}   {Color.dim('或直接说你想做什么')}\n"
+                f"  {Color.dim('例如:')} 播放周杰伦的歌  |  系统状态  |  截个屏  |  翻译 hello\n"
+            )
+        else:
+            self.intro = (
+                f"\n{Color.bold('🤖 Mac Agent Personal  —  Local Mac AI Assistant')}\n"
+                f"{Color.dim('╶' * 42)}\n"
+                f"  {Color.info('●')}  {cmd_count} commands  {Color.info('●')}  CN/EN bilingual  {Color.info('●')}  OpenAI/Ollama\n"
+                f"  {Color.dim('Type')} {Color.bold('help')} {Color.dim('for commands')}   {Color.bold('exit')} {Color.dim('to quit')}   {Color.dim('or just say what to do')}\n"
+                f"  {Color.dim('e.g.:')} play Jay Chou  |  system status  |  translate hello\n"
+            )
 
         # Create Agent
         self.llm_client = LLMClient(config)
@@ -264,12 +323,7 @@ class PersonalAgentREPL(cmd.Cmd):
             print(f"{Color.dim('可以控制音乐、截图、OCR识别、UI自动化、查看系统状态等')}")
         elif any(k in t for k in ["能力", "能做什么", "功能", "capabilities"]):
             print(f"{Color.bold(f'📋 我具备 {len(COMMANDS)} 个命令:')}")
-            cols = 3
-            names = sorted(COMMANDS.keys())
-            for i in range(0, len(names), cols):
-                row = names[i:i+cols]
-                print(f"  {Color.info('  '.join(f'{n:25s}' for n in row))}")
-            print(f"\n{Color.dim('也可以直接说: 播放周杰伦的歌 / 系统状态 / 截图 / 帮助')}")
+            self.do_help("")
         elif any(k in t for k in ["大模型", "模型", "ai", "llm"]):
             print(f"{Color.bold('🧠 AI 引擎:')}")
             print(f"  对话: Ollama (本地)")
@@ -328,44 +382,44 @@ class PersonalAgentREPL(cmd.Cmd):
     # ── 内置命令 ──────────────────────────────────────────
 
     def do_help(self, arg):
-        """显示帮助"""
-        print(f"\n{Color.bold('📖 Mac Agent Personal 使用帮助')}")
+        """Show help (auto-detect system language)"""
+        from knowagent_personal.agent.help_text import get_help_text, get_system_lang
+        from knowagent_personal.agent.aliases import get_cn_aliases
+
+        lang = get_system_lang()
+        txt = get_help_text(lang)
+
+        print(f"\n{Color.bold(txt['title'])}")
         print(f"{Color.dim('=' * 50)}")
-        print(f"\n{Color.bold('自然语言示例:')}")
-        examples = [
-            ("播放周杰伦的歌", "搜索 Apple Music 并播放"),
-            ("帮我看看系统状态", "查 CPU/内存/磁盘/网络"),
-            ("截个屏", "截屏"),
-            ("看看屏幕上有什么字", "截屏+OCR 识别文字"),
-            ("打开 Music 的界面结构", "查看 Music App 的 UI 树"),
-            ("输入 hello world", "模拟键盘打字"),
-            ("提醒我十分钟后开会", "发送通知"),
-            ("查看今天的日程", "读取日历"),
-            ("锁屏", "锁定屏幕"),
-            ("工作流", "运行预设的多步工作流"),
-        ]
-        for cmd, desc in examples:
-            print(f"  {Color.info(cmd + ' ' * (20 - len(cmd)))} {Color.dim(desc)}")
+        print(f"\n{Color.bold(txt['natural_title'])}")
+        for cmd, desc in txt['natural_examples']:
+            padding = 24 - len(cmd)
+            print(f"  {Color.info(cmd)}{' ' * padding}{Color.dim(desc)}")
 
-        print(f"\n{Color.bold('直接命令:')}")
-        cols = 3
-        names = sorted(COMMANDS.keys())
-        for i in range(0, len(names), cols):
-            row = names[i:i+cols]
-            print(f"  {Color.info('  '.join(f'{n:25s}' for n in row))}")
+        cn_available = (lang == "zh")
+        cat_title = "Commands (Chinese names supported):" if not cn_available else "分类命令（支持中文调用）:"
+        print(f"\n{Color.bold(cat_title)}")
 
-        print(f"\n{Color.bold('个人知识库:')}")
-        print(f"  {Color.dim('rag init              初始化知识库')}")
-        print(f"  {Color.dim('rag index ~/Documents 索引文档')}")
-        print(f"  {Color.dim('rag search 机器学习    搜索知识库')}")
-        print(f"  {Color.dim('rag clear             清除对话历史')}")
+        for title, cmds in txt['ex_categories'].items():
+            print(f"\n  {Color.bold(title)}")
+            for c in cmds:
+                if c in COMMANDS:
+                    docs = (COMMANDS[c].__doc__ or "").strip()
+                    doc_short = docs.split("\n")[0][:50] if docs else ""
+                    aliases = get_cn_aliases(c)
+                    alias_str = f" ({', '.join(aliases[:3])})" if cn_available and aliases else ""
+                    print(f"    {Color.info(c):30s} {Color.dim(doc_short)}{alias_str}")
 
-        print(f"\n{Color.bold('命令+参数:')}")
-        print(f"  {Color.dim('music_search_online keyword=周杰伦')}")
-        print(f"  {Color.dim('file_list path=/Applications')}")
-        print(f"  {Color.dim('ui_tree app=Music')}")
-        print(f"  {Color.dim('keyboard_type text=你好世界')}")
-        print(f"  {Color.dim('screenshot_analyze region=100,200,800,600')}")
+        print(f"\n{Color.bold(txt['knowledge_title'])}")
+        for cmd, desc in txt['knowledge_cmds']:
+            padding = 24 - len(cmd)
+            print(f"  {Color.dim(cmd)}{' ' * padding}{desc}")
+
+        print(f"\n{Color.bold(txt['params_title'])}")
+        for ex in txt['params_examples']:
+            print(f"  {Color.dim(ex)}")
+
+        print(f"\n{Color.dim(txt['footer'])}")
 
     def do_exit(self, arg):
         """退出"""
@@ -388,12 +442,18 @@ class PersonalAgentREPL(cmd.Cmd):
         subcmd = parts[0] if parts else "help"
         rest = parts[1] if len(parts) > 1 else ""
 
+        # 懒加载 RAG
+        rag_instance = None
+        if hasattr(self.agent, "_ensure_rag"):
+            if self.agent._ensure_rag():
+                rag_instance = self.agent.rag
+
         if subcmd == "init":
-            if hasattr(self.agent, "rag") and self.agent.rag:
-                ok = self.agent.rag.init()
+            if rag_instance:
+                ok = rag_instance.init()
             else:
-                rag = PersonalRAG(self.config)
-                ok = rag.init()
+                rag_instance = PersonalRAG(self.config)
+                ok = rag_instance.init()
             if ok:
                 print(f"{Color.ok('✅')} 知识库已初始化")
             else:
@@ -403,8 +463,8 @@ class PersonalAgentREPL(cmd.Cmd):
                 )
         elif subcmd == "index":
             path = rest or "~/Documents"
-            if hasattr(self.agent, "rag") and self.agent.rag:
-                result = self.agent.rag.index_directory(path)
+            if rag_instance:
+                result = rag_instance.index_directory(path)
             else:
                 print(f"{Color.err('❌')} 知识库未初始化，请先运行: rag init")
                 return
@@ -544,13 +604,35 @@ def single_command(text: str, cli_overrides: dict | None = None):
 
 
 def _show_help_simple():
-    print(f"\n{Color.bold('📖 Mac Agent Personal 命令列表:')}")
-    cols = 3
-    names = sorted(COMMANDS.keys())
-    for i in range(0, len(names), cols):
-        row = names[i:i+cols]
-        print(f"  {'  '.join(f'{n:25s}' for n in row)}")
-    print(f"\n{Color.dim('自然语言示例: 播放周杰伦的歌 | 系统状态 | 截图 | 通知 下午开会')}")
+    """Show categorized help with language auto-detect."""
+    from knowagent_personal.agent.help_text import get_help_text, get_system_lang
+    from knowagent_personal.agent.aliases import get_cn_aliases
+
+    lang = get_system_lang()
+    txt = get_help_text(lang)
+
+    print(f"\n{Color.bold(txt['title'])}")
+    print(f"{Color.dim('=' * 50)}")
+    print(f"\n{Color.bold(txt['natural_title'])}")
+    for cmd, desc in txt['natural_examples']:
+        padding = 24 - len(cmd)
+        print(f"  {Color.info(cmd)}{' ' * padding}{Color.dim(desc)}")
+
+    cn_available = (lang == "zh")
+    cat_title = "Commands:" if not cn_available else "分类命令:"
+    print(f"\n{Color.bold(cat_title)}")
+
+    for title, cmds in txt['ex_categories'].items():
+        print(f"\n  {Color.bold(title)}")
+        for c in cmds:
+            if c in COMMANDS:
+                docs = (COMMANDS[c].__doc__ or "").strip()
+                doc_short = docs.split("\n")[0][:50] if docs else ""
+                aliases = get_cn_aliases(c)
+                alias_str = f" ({', '.join(aliases[:3])})" if cn_available and aliases else ""
+                print(f"    {Color.info(c):30s} {Color.dim(doc_short)}{alias_str}")
+
+    print(f"\n{Color.dim(txt['footer'])}")
 
 
 def _chat_local_single(text):
@@ -573,21 +655,12 @@ def run_repl(cli_overrides: dict | None = None):
     """Run the interactive REPL."""
     config = _get_config(cli_overrides)
 
-    print(f"{Color.CLEAR}", end="")
-    print(f"{Color.CYAN}{'╔' + '═' * 50 + '╗'}{Color.RESET}")
-    print(f"{Color.CYAN}║{Color.RESET}  {Color.bold('🔮 Mac Agent Personal')} {Color.dim('v0.1.0')}        {Color.CYAN}║{Color.RESET}")
-    print(f"{Color.CYAN}║{Color.RESET}  {Color.dim('30+ 命令 · 本地 LLM · 离线运行')}       {Color.CYAN}║{Color.RESET}")
-    print(f"{Color.CYAN}{'╚' + '═' * 50 + '╝'}{Color.RESET}")
-    print()
-
     # Check Swift binaries
     from knowagent_personal.agent.tools import _BIN_DIR
     ax_bin = os.path.join(_BIN_DIR, "ax_inspector")
     ocr_bin = os.path.join(_BIN_DIR, "screen_ocr")
-    if os.path.exists(ax_bin) and os.path.exists(ocr_bin):
-        print(f"  {Color.ok('✓')} Swift 工具就绪")
-    else:
-        print(f"  {Color.warn('⚠')} Swift 工具编译中...")
+    if not (os.path.exists(ax_bin) and os.path.exists(ocr_bin)):
+        print(f"{Color.dim('  ⚠ Swift 工具编译中...')}")
 
     try:
         PersonalAgentREPL(config).cmdloop()

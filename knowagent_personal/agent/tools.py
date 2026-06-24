@@ -21,6 +21,7 @@ try:
 except ImportError:
     psutil = None
 
+from .__tools_init__ import ALL_COMMANDS, ALL_TOOL_SCHEMAS, register_all
 
 # ── 常量 ─────────────────────────────────────────────────
 
@@ -914,8 +915,30 @@ def set_rag(retriever):
     _knowledge_retriever = retriever
 
 
+# ── 配置注入 ────────────────────────────────────────────────
+_config_instance = None
+
+
+def set_config(config):
+    """Inject the active Config instance for hot-reload support."""
+    global _config_instance
+    _config_instance = config
+
+
 def knowledge_retrieve(query: str, n_results: int = 5) -> str:
-    """搜索个人文档和笔记。当用户问到自己文件、笔记、文档时使用此工具。"""
+    """搜索个人文档和笔记。当用户问到自己文件、笔记、文档时使用此工具。
+    自动懒加载 RAG（首次调用时初始化）。
+    """
+    global _knowledge_retriever
+    if not _knowledge_retriever or not _knowledge_retriever._initialized:
+        try:
+            from knowagent_personal.config import Config
+            from knowagent_personal.memory.rag import PersonalRAG
+            rag = PersonalRAG(Config())
+            if rag.init():
+                set_rag(rag)
+        except Exception:
+            pass
     if not _knowledge_retriever or not _knowledge_retriever._initialized:
         return "个人知识库未启用。请先运行: rag init"
     results = _knowledge_retriever.search(query, n_results=n_results)
@@ -962,6 +985,71 @@ def cmd_voice_input(params: dict) -> str:
 
 # ── 命令注册表 ───────────────────────────────────────────
 
+def cmd_vpn_status(params: dict) -> str:
+    """VPN 工具 — 连接检测、代理管理、浏览器登录。
+    action=status/enable/disable/connect/disconnect/login/fortinet/type/check/safari"""
+    from knowagent_personal.agent.vpn import VpnClient
+
+    action = params.get("action", "status")
+    vpn = VpnClient()
+
+    # 切换 VPN 类型
+    vpn_type = params.get("vpn_type", "")
+    if vpn_type:
+        return vpn.switch_type(vpn_type)
+
+    actions = {
+        "status": lambda: vpn.quick_check(),
+        "check": lambda: vpn.quick_check(),
+        "enable": lambda: vpn.enable_proxy(),
+        "disable": lambda: vpn.disable_proxy(),
+        "connect": lambda: vpn.connect(),
+        "disconnect": lambda: vpn.disconnect(),
+        "login": lambda: vpn.open_browser(),
+        "browser": lambda: vpn.open_browser(),
+        "safari": lambda: vpn.open_safari(),
+        # Fortinet 专用
+        "fortinet": lambda: f"{vpn.switch_type('fortinet')}\n\n{vpn.fortinet_connect()}",
+        "fortinet_connect": lambda: vpn.fortinet_connect(),
+        "fortinet_disconnect": lambda: vpn.fortinet_disconnect(),
+        "fortinet_status": lambda: vpn.quick_check(),
+    }
+
+    handler = actions.get(action)
+    if handler:
+        return handler()
+
+    # 显示帮助 + 当前配置
+    vpn_type_names = {"atrust": "深信服 aTrust", "fortinet": "FortiGate (openfortivpn)"}
+    cur_type = vpn_type_names.get(vpn.vpn_type, vpn.vpn_type)
+    cfg = vpn.get_config()
+
+    lines = [
+        "📋 VPN 工具 — 可用操作:",
+        f"  当前 VPN 类型: {cur_type} ({cfg['vpn_host']}:{cfg['vpn_port']})",
+        "",
+        "  通用操作:",
+        "    vpn_status action=status      查看完整状态（含连通性检测）",
+        "    vpn_status action=check       连通性检测",
+        "    vpn_status action=enable      启用代理（aTrust）",
+        "    vpn_status action=disable     禁用代理",
+        "    vpn_status action=login       在浏览器中打开 VPN 登录页",
+        "    vpn_status action=connect     一键连接",
+        "",
+        "  FortiGate VPN (openfortivpn):",
+        "    vpn_status action=fortinet    切换到 Fortinet 并连接",
+        "    vpn_status action=fortinet_connect     连接 Fortinet",
+        "    vpn_status action=fortinet_disconnect  断开 Fortinet",
+        "    vpn_status vpn_type=fortinet  切换到 Fortinet 模式",
+        "    vpn_status vpn_type=atrust    切换到 aTrust 模式",
+        "",
+        f"  🔌 代理: {'🟢 已启用' if cfg['enabled'] else '🔴 已禁用'}",
+        f"  🌐 VPN:  {cfg['vpn_host']}:{cfg['vpn_port']}",
+        f"  📄 配置: {cfg['config_file']}",
+    ]
+    return "\n".join(lines)
+
+
 def cmd_knowledge_retrieve(params: dict) -> str:
     """搜索个人文档和笔记。query=搜索关键词"""
     query = params.get("query", "")
@@ -1007,6 +1095,7 @@ COMMANDS = {
     "notes_list": cmd_notes_list,
     "contacts_search": cmd_contacts_search,
     "workflow_execute": cmd_workflow_execute,
+    "vpn_status": cmd_vpn_status,
 }
 
 # Merge extra commands
@@ -1156,6 +1245,21 @@ TOOL_SCHEMAS: dict = {
             "detail": {"type": "string", "description": "邮件 LocalId，查看正文"},
         },
     },
+    "vpn_status": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "description": "操作: status(连通性检测), enable(启用代理), disable(禁用代理), connect(一键连接), disconnect(断开), login(浏览器打开), fortinet(切换到Fortinet并连接), fortinet_connect, fortinet_disconnect",
+                "enum": ["status", "check", "enable", "disable", "connect", "disconnect", "login", "browser", "safari", "fortinet", "fortinet_connect", "fortinet_disconnect", "fortinet_status"],
+            },
+            "vpn_type": {
+                "type": "string",
+                "description": "切换 VPN 类型: atrust(深信服,默认) 或 fortinet(FortiGate openfortivpn)",
+                "enum": ["atrust", "fortinet"],
+            },
+        },
+    },
     "knowledge_retrieve": {
         "type": "object",
         "properties": {
@@ -1166,6 +1270,9 @@ TOOL_SCHEMAS: dict = {
     },
 }
 
+
+# Register commands from tool modules (ai_tools, dev_tools, file_tools, etc.)
+register_all(COMMANDS, TOOL_SCHEMAS)
 
 # ── 运行时命令注册（供插件系统使用）────────────────────
 

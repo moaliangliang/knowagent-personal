@@ -31,6 +31,25 @@ DEFAULT_CONFIG = {
         "chunk_overlap": 50,
         "index_dirs": ["~/Documents", "~/Desktop"],
     },
+    "proxy": {
+        "enabled": False,
+        "vpn_type": "atrust",          # "atrust" 深信服 or "fortinet" FortiGate
+        "http": "http://127.0.0.1:7890",
+        "https": "http://127.0.0.1:7890",
+        "socks": "",
+        "no_proxy": "localhost,127.0.0.1,.local",
+        "vpn_host": "vpn.sgssemi.com",
+        "vpn_port": 443,
+        # Fortinet VPN (openfortivpn) 配置
+        # 安全提示：用户名密码请通过 ka credential 存入 macOS Keychain
+        "fortinet": {
+            "host": "60.190.246.42",
+            "port": 10443,
+            "username": "",
+            "password": "",
+            "trusted_cert": "d5e84c6f2b426cac1cceeebdd43797f76d4ef7f885ee814d01f8460f8bd55b24",
+        },
+    },
     "ui": {
         "history_file": os.path.join(CONFIG_DIR, "history"),
         "color_enabled": True,
@@ -111,6 +130,20 @@ class Config:
         for p in parts[:-1]:
             target = target.setdefault(p, {})
         target[parts[-1]] = value
+
+    def get_proxies(self) -> dict | None:
+        """Return requests-compatible proxy dict, or None if proxy disabled."""
+        if not self._data.get("proxy", {}).get("enabled", False):
+            return None
+        p = self._data["proxy"]
+        proxies = {}
+        if p.get("http"):
+            proxies["http"] = p["http"]
+        if p.get("https"):
+            proxies["https"] = p["https"]
+        if p.get("socks"):
+            proxies["socks5"] = proxies.get("socks5h", p["socks"])
+        return proxies or None
 
     def save(self):
         """Persist config to disk."""
