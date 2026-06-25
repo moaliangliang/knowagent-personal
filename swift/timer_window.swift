@@ -55,9 +55,9 @@ view.addSubview(timerLabel)
 
 // ── 状态文字 ──
 let statusLabel = NSTextField(labelWithString: "保持专注")
-statusLabel.font = NSFont.systemFont(ofSize: fontSize(13))
+statusLabel.font = NSFont.boldSystemFont(ofSize: fontSize(15))
 statusLabel.alignment = .center
-statusLabel.textColor = NSColor.gray
+statusLabel.textColor = NSColor.red
 statusLabel.autoresizingMask = [.width, .minYMargin, .maxYMargin]
 statusLabel.frame = CGRect(x: 0, y: view.bounds.height * 0.36, width: view.bounds.width, height: 20)
 view.addSubview(statusLabel)
@@ -120,7 +120,7 @@ class WindowDelegate: NSObject, NSWindowDelegate {
         let h = view.bounds.height
         let scale = h / defaultH
         timerLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 64 * scale, weight: .bold)
-        statusLabel.font = NSFont.systemFont(ofSize: 13 * scale)
+        statusLabel.font = NSFont.boldSystemFont(ofSize: 15 * scale)
         pauseBtn.font = NSFont.systemFont(ofSize: 12 * scale)
         cancelBtn.font = NSFont.systemFont(ofSize: 12 * scale)
         opacityLabel.font = NSFont.systemFont(ofSize: 10 * scale)
