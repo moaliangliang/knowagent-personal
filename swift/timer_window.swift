@@ -17,7 +17,7 @@ let window = NSWindow(
 )
 window.title = "🍅 \(titleArg)"
 window.center()
-window.level = .floating
+window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
 window.makeKeyAndOrderFront(nil)
 window.orderFrontRegardless()
 NSApp.activate(ignoringOtherApps: true)
