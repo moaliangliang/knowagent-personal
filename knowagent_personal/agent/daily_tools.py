@@ -56,13 +56,13 @@ def _speak(text: str) -> None:
 # ── 命令处理器（全部返回 str）───────────────────────────
 
 def cmd_timer(params: dict) -> str:
-    """番茄钟 / 计时器。sleep MINUTES*60 秒后显示通知，可选朗读"时间到"。
+    """番茄钟 / 计时器。打开 GUI 倒计时窗口，支持暂停/继续/取消。
 
     参数:
-        minutes (int): 计时分钟数。默认为 5。
+        minutes (int): 计时分钟数。默认为 25（一个番茄）。
         name (str, optional): 计时器名称，默认"番茄钟"。
     """
-    minutes = int(params.get("minutes", 5))
+    minutes = int(params.get("minutes", 25))
     name = params.get("name", "番茄钟")
 
     if minutes <= 0:
@@ -71,11 +71,29 @@ def cmd_timer(params: dict) -> str:
         return "❌ minutes 不能超过 1440（24小时）"
 
     try:
-        total_seconds = minutes * 60
-        time.sleep(total_seconds)
+        from knowagent_personal.ui.timer_window import TomatoWindow
+        win = TomatoWindow()
+        # 在后台线程启动 GUI（不阻塞终端）
+        import threading
+        result_container = []
+
+        def _run():
+            r = win.start(minutes=minutes, name=name)
+            result_container.append(r)
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+
+        # 立即返回，终端可继续使用
+        return f"🍅 [{name}] {minutes} 分钟倒计时已启动（窗口已打开）"
+    except ImportError as e:
+        # 回退: 阻塞式计时
+        _notify(name, f"{minutes} 分钟倒计时开始")
+        import time as _t
+        _t.sleep(minutes * 60)
         _notify(name, "时间到！")
         _speak("时间到")
-        return f"✅ [{name}] {minutes} 分钟计时结束，已通知"
+        return f"✅ [{name}] {minutes} 分钟计时结束"
     except Exception as e:
         return f"❌ 计时器异常: {e}"
 
