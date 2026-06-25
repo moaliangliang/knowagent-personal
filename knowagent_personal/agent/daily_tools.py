@@ -71,22 +71,9 @@ def cmd_timer(params: dict) -> str:
         return "❌ minutes 不能超过 1440（24小时）"
 
     try:
-        from knowagent_personal.ui.timer_window import TomatoWindow
-        win = TomatoWindow()
-        # 在后台线程启动 GUI（不阻塞终端）
-        import threading
-        result_container = []
-
-        def _run():
-            r = win.start(minutes=minutes, name=name)
-            result_container.append(r)
-
-        t = threading.Thread(target=_run, daemon=True)
-        t.start()
-
-        # 立即返回，终端可继续使用
-        return f"🍅 [{name}] {minutes} 分钟倒计时已启动（窗口已打开）"
-    except ImportError as e:
+        from knowagent_personal.ui.timer_window import start_timer
+        return start_timer(minutes=minutes, name=name)
+    except ImportError:
         # 回退: 阻塞式计时
         _notify(name, f"{minutes} 分钟倒计时开始")
         import time as _t
