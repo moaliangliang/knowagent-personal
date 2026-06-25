@@ -83,7 +83,7 @@ _THREAT_PATTERNS: list[Tuple[str, str, ScanScope, ScanAction, float]] = [
      "disregard_rules", ScanScope.ALL, ScanAction.BLOCK, 0.9),
     (r'act\s+as\s+(?:if|though)\s+(?:\w+\s+)*you\s+(?:\w+\s+)*(?:have\s+no|don.?t\s+have)\s+(?:\w+\s+)*(?:restrictions|limits|rules)',
      "bypass_restrictions", ScanScope.ALL, ScanAction.BLOCK, 0.9),
-    (r'you\s+(?:are|will\s+be)\s+(?:a\s+)?(?:free|unleashed|unbounded|unrestricted|unlocked)',
+    (r'you\s+(?:are|will\s+be)\s+(?:\w+\s+)*(?:a\s+)?(?:free|unleashed|unbounded|unrestricted|unlocked)',
      "free_unleashed", ScanScope.ALL, ScanAction.BLOCK, 0.85),
     (r'output\s+(?:the\s+)?(?:full|complete|entire|initial|system)\s+(?:\w+\s+)?prompt',
      "leak_prompt", ScanScope.ALL, ScanAction.BLOCK, 0.95),
