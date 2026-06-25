@@ -15,7 +15,12 @@ let window = NSWindow(
     backing: .buffered, defer: false
 )
 window.title = "🍅 \(titleArg)"
-window.center()
+// 默认右上角（菜单栏下方 4px）
+if let screen = NSScreen.main {
+    let vf = screen.visibleFrame
+    window.setFrameOrigin(NSPoint(x: vf.maxX - window.frame.width - 4, y: vf.maxY - window.frame.height - 4))
+}
+window.isMovableByWindowBackground = true
 window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
 window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
 window.hidesOnDeactivate = false
