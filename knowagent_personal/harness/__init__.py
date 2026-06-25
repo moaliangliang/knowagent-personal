@@ -69,6 +69,15 @@ from .sandbox_whitelist import (
     SandboxResult,
     SANDBOX_ALLOWED_TOOLS,
 )
+from .self_improvement import (
+    SelfImprovementLoop,
+    TurnRecorder,
+    SkillCreator,
+    SkillRefiner,
+    SelfInspector,
+    TurnRecord,
+    ToolCallRecord,
+)
 
 __all__ = [
     # registry

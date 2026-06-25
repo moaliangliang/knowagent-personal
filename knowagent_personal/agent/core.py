@@ -18,6 +18,7 @@ from typing import Any
 
 from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
 from knowagent_personal.harness.integration import install_harness
+from knowagent_personal.harness.self_improvement import SelfImprovementLoop
 
 SYSTEM_PROMPT = """你是 Mac Agent Personal，一个本地运行的 Mac 桌面 AI 助手。
 你有 70 多个本地命令可以控制 Mac 系统，包括：
@@ -91,6 +92,8 @@ class Agent:
         db_path = config.get("storage.db_path", "~/.knowagent/personal.db")
         if db_path:
             self._harness.context.memory.load_from_db(db_path)
+        # 自改进循环
+        self._improve = SelfImprovementLoop()
         # 发送 session.start 事件
         self._harness.events.emit("session.start")
         # ───────────────────────────────────────────────────
@@ -159,6 +162,12 @@ class Agent:
             harness.context.add_user_message(user_input)
         # ────────────────────────
 
+        # ── 自改进: 开始记录本轮 ──
+        improve = getattr(self, '_improve', None)
+        if improve:
+            improve.start_turn(user_input)
+        # ─────────────────────────
+
         self.conversation_history.append({
             "role": "user",
             "content": user_input,
@@ -188,12 +197,24 @@ class Agent:
                         func_args = {}
 
                     # Execute tool (goes through harness if injected)
+                    import time as _t
+                    _ts = _t.time()
                     result = self._execute_tool(func_name, func_args)
+                    _dur = _t.time() - _ts
 
                     # ── Harness: 记录工具结果到上下文 ──
                     if harness and harness.context:
                         harness.context.add_tool_result(func_name, result)
                     # ──────────────────────────────────────
+
+                    # ── 自改进: 记录工具调用 ──
+                    if improve:
+                        improve.record_tool_call(
+                            func_name, func_args, str(result),
+                            success=not str(result).startswith("❌"),
+                            duration=_dur,
+                        )
+                    # ───────────────────────────
 
                     # Add assistant message with tool call
                     messages.append({
@@ -222,6 +243,14 @@ class Agent:
                     harness.context.add_assistant_message(reply)
                 # ──────────────────────────────────────
 
+                # ── 自改进: 结束本轮回放 + 可能审查 ──
+                if improve:
+                    improve.end_turn(user_input, reply)
+                    findings = improve.maybe_review()
+                    if findings:
+                        reply += "\n\n" + "\n".join(findings)
+                # ─────────────────────────────────────
+
                 elapsed = time.time() - start_time
                 if elapsed > 1:
                     return f"{reply}\n\n⏱ {elapsed:.1f}s"
@@ -229,6 +258,8 @@ class Agent:
 
         # Max turns reached - clean up
         self.conversation_history.pop()
+        if improve:
+            improve.end_turn(user_input, "处理次数过多", success=False)
         return "❌ 处理次数过多（超过5轮工具调用），请简化需求或重试。"
 
     def _execute_tool(self, name: str, params: dict) -> str:
