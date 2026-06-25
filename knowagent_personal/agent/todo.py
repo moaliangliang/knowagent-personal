@@ -126,6 +126,13 @@ class TodoManager:
         self._save()
         return True
 
+    def delete_all_pending(self) -> list[TodoItem]:
+        """删除所有未完成的代办，返回被删除的列表。"""
+        deleted = [t for t in self._todos if not t.done]
+        self._todos = [t for t in self._todos if t.done]
+        self._save()
+        return deleted
+
     def update(self, item_id: int, **kwargs) -> bool:
         for t in self._todos:
             if t.id == item_id:
@@ -280,9 +287,15 @@ def cmd_todo_undo(params: dict) -> str:
 
 
 def cmd_todo_delete(params: dict) -> str:
-    """删除代办事项。:param id: 事项编号"""
-    item_id = int(params.get("id", 0))
+    """删除代办事项。:param id: 事项编号（0=删除所有待办）"""
     mgr = TodoManager.get()
+    item_id = int(params.get("id", 0))
+    if item_id == 0:
+        deleted = mgr.delete_all_pending()
+        if deleted:
+            names = "\n".join(f"  🗑️ #{t.id} {t.title}" for t in deleted)
+            return f"🗑️ 已删除 {len(deleted)} 项待办:\n{names}"
+        return "📭 没有待办事项需要删除"
     if mgr.delete(item_id):
         return f"🗑️ #{item_id} 已删除"
     return f"❌ 未找到 #{item_id}"
