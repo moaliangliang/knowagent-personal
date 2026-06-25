@@ -84,8 +84,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func tick() {
-        // 每秒重设置顶（防止被其他窗口覆盖）
-        window.orderFrontRegardless()
+        // 每 tick 仅复位 level（无感 — 不闪屏、不抢焦点）
         window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
 
         if paused { return }
