@@ -236,9 +236,14 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history")
 class PersonalAgentREPL(cmd.Cmd):
     prompt = f"{Color.info('› ')}"
 
+    # 清当前行 + prompt（\r 回到行首，\033[K 清除到行尾）
+    _CLEAN_PROMPT = "\r\033[K" + f"{Color.info('› ')}"
+
     def __init__(self, config: Config, interactive=True):
         super().__init__()
         self.config = config
+        # 使用带清行前缀的 prompt（防止上下翻历史残留）
+        self.prompt = self._CLEAN_PROMPT
         self._last_output = ""
         self._interactive = interactive
         self._conv_history = []
