@@ -31,6 +31,12 @@ def start_timer(minutes: int = 25, name: str = "番茄钟") -> str:
     root.resizable(False, False)
     root.attributes("-topmost", True)
 
+    # 强制置顶 + 获取焦点
+    root.lift()
+    root.focus_force()
+    root.after(100, lambda: (root.lift(), root.focus_force(), root.attributes("-topmost", True)))
+    root.after(500, lambda: (root.lift(), root.attributes("-topmost", True)))
+
     bg = "#2c2c2c"
     accent = "#e67e22"
     root.configure(bg=bg)
