@@ -10,6 +10,7 @@ swift/ax_inspector
 swift/screen_ocr
 swift/menubar
 swift/hotkey
+swift/timer_window
 ~/.knowagent/bin/
 
 # Local state
