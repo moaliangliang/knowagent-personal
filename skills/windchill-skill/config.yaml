@@ -1,0 +1,22 @@
+# Windchill Skill 配置
+# 首次使用请配置 bridge 或 direct 模式
+
+mode: bridge  # bridge | direct
+
+# Bridge 模式：个人版通过后端 HTTP 代理
+# 确认后端 KnowAgent 已启动，且 /api/agent/windchill 可用
+bridge:
+  url: http://localhost:8000
+
+# Direct 模式：后端直接连接 Windchill OData API
+# 密码建议通过 ka credential 存入 Keychain
+direct:
+  host: 61.169.97.58
+  http_port: "7380"
+  ssh_port: "2222"
+  odata_user: wcadmin
+  odata_password: ""
+  ssh_user: administrator
+  ssh_password: ""
+  windchill_home: "D:/ptc/Windchill_12.1/Windchill"
+  oracle_home: "D:/app/oracle/product/12.1.0/dbhome_1"

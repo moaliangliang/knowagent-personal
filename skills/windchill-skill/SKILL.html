@@ -1,0 +1,32 @@
+<!--
+@dsCard group="Windchill"
+@dsCard viewport="800x600"
+-->
+<h1 align="center" style="font-family: -apple-system, sans-serif; padding: 40px 0 0; margin: 0; font-size: 28px; color: #1a1a2e;">🌀 Windchill PLM Skill</h1>
+<p align="center" style="font-family: -apple-system, sans-serif; color: #666; font-size: 14px; margin: 4px 0 24px;">KnowAgent — Enterprise PLM Integration</p>
+
+<div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px;">
+  <span style="background: #e8f4f8; color: #1a7a9e; padding: 4px 14px; border-radius: 12px; font-size: 12px;">56 commands</span>
+  <span style="background: #fff3e0; color: #e65100; padding: 4px 14px; border-radius: 12px; font-size: 12px;">bridge + direct mode</span>
+  <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 14px; border-radius: 12px; font-size: 12px;">PTC Windchill</span>
+  <span style="background: #f3e5f5; color: #7b1fa2; padding: 4px 14px; border-radius: 12px; font-size: 12px;">Oracle DBA</span>
+</div>
+
+<div style="background: #f5f5f5; border-radius: 12px; padding: 20px; margin: 0 auto 20px; max-width: 600px; font-family: monospace; font-size: 13px; line-height: 1.6;">
+  <div style="color: #2e7d32;"># Install</div>
+  <div>ka skill install gh:knowagent/windchill-skill</div>
+  <div style="margin-top: 8px; color: #2e7d32;"># Query</div>
+  <div>ka 查零件 number=ABC-123</div>
+  <div>ka 查BOM part_number=ABC-123</div>
+  <div>ka 待办任务</div>
+  <div style="margin-top: 8px; color: #e65100;"># Execute (requires permission)</div>
+  <div>ka 审批 task_id=123 comment="已确认"</div>
+  <div>ka 创建物料 name=新零件 number=NEW-001</div>
+  <div style="margin-top: 8px; color: #7b1fa2;"># Oracle DBA</div>
+  <div>ka oracle status</div>
+  <div>ka oracle_sql sql="SELECT * FROM USERS"</div>
+</div>
+
+<div style="font-size: 13px; color: #333; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+  <strong>Feature</strong>: Full PTC Windchill PLM integration — parts, BOM, workflows, documents, change management, event subscriptions, worker management, system administration, Oracle DBA.
+</div>
