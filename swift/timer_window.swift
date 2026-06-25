@@ -8,12 +8,16 @@ import Cocoa
 let minutes: Int = Int(CommandLine.arguments.dropFirst().first ?? "25") ?? 25
 let titleArg: String = CommandLine.arguments.dropFirst().dropFirst().first ?? "番茄钟"
 
-// ── 窗口（CGShieldingWindowLevel 确保在所有窗口最前方）──
+// ── 窗口（可调小 + CGShieldingWindowLevel 置顶）──
+let defaultW: CGFloat = 320
+let defaultH: CGFloat = 220
 let window = NSWindow(
-    contentRect: NSRect(x: 0, y: 0, width: 320, height: 220),
-    styleMask: [.titled, .closable, .miniaturizable],
+    contentRect: NSRect(x: 0, y: 0, width: defaultW, height: defaultH),
+    styleMask: [.titled, .closable, .miniaturizable, .resizable],
     backing: .buffered, defer: false
 )
+window.minSize = NSSize(width: 200, height: 150)
+window.maxSize = NSSize(width: defaultW, height: defaultH)
 window.title = "🍅 \(titleArg)"
 // 默认右上角（菜单栏下方 4px）
 if let screen = NSScreen.main {
@@ -47,18 +51,44 @@ let statusLabel = NSTextField(labelWithString: titleArg)
 statusLabel.font = NSFont.systemFont(ofSize: 13)
 statusLabel.alignment = .center
 statusLabel.textColor = NSColor.gray
-statusLabel.frame = CGRect(x: 0, y: 60, width: 320, height: 20)
+statusLabel.frame = CGRect(x: 0, y: 80, width: 320, height: 20)
 view.addSubview(statusLabel)
+
+// ── 透明度滑块 ──
+let opacityLabel = NSTextField(labelWithString: "不透明度")
+opacityLabel.font = NSFont.systemFont(ofSize: 10)
+opacityLabel.textColor = NSColor.gray
+opacityLabel.frame = CGRect(x: 20, y: 58, width: 60, height: 16)
+opacityLabel.isBezeled = false
+opacityLabel.isEditable = false
+opacityLabel.backgroundColor = .clear
+view.addSubview(opacityLabel)
+
+var currentOpacity: CGFloat = 1.0
+let opacitySlider = NSSlider(value: 1.0, minValue: 0.2, maxValue: 1.0, target: nil, action: nil)
+opacitySlider.frame = CGRect(x: 80, y: 55, width: 140, height: 20)
+opacitySlider.isContinuous = true
+opacitySlider.action = nil  // will be set in AppDelegate
+view.addSubview(opacitySlider)
+
+let opacityValLabel = NSTextField(labelWithString: "100%")
+opacityValLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+opacityValLabel.textColor = NSColor.gray
+opacityValLabel.frame = CGRect(x: 225, y: 58, width: 40, height: 16)
+opacityValLabel.isBezeled = false
+opacityValLabel.isEditable = false
+opacityValLabel.backgroundColor = .clear
+view.addSubview(opacityValLabel)
 
 // ── 按钮 ──
 let pauseBtn = NSButton(title: "⏸ 暂停", target: nil, action: nil)
-pauseBtn.frame = CGRect(x: 30, y: 20, width: 120, height: 28)
+pauseBtn.frame = CGRect(x: 30, y: 20, width: 100, height: 28)
 pauseBtn.bezelStyle = .rounded
 pauseBtn.font = NSFont.systemFont(ofSize: 12)
 view.addSubview(pauseBtn)
 
 let cancelBtn = NSButton(title: "✕ 取消", target: nil, action: nil)
-cancelBtn.frame = CGRect(x: 170, y: 20, width: 120, height: 28)
+cancelBtn.frame = CGRect(x: 150, y: 20, width: 100, height: 28)
 cancelBtn.bezelStyle = .rounded
 cancelBtn.font = NSFont.systemFont(ofSize: 12)
 view.addSubview(cancelBtn)
@@ -79,8 +109,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var paused: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        opacitySlider.target = self
+        opacitySlider.action = #selector(changeOpacity(_:))
         Timer.scheduledTimer(timeInterval: 1.0, target: self,
             selector: #selector(tick), userInfo: nil, repeats: true)
+    }
+
+    @objc func changeOpacity(_ sender: NSSlider) {
+        let alpha = CGFloat(sender.floatValue)
+        currentOpacity = alpha
+        view.layer?.backgroundColor = CGColor(red: 0.173, green: 0.173, blue: 0.173, alpha: alpha)
+        window.alphaValue = alpha
+        opacityValLabel.stringValue = "\(Int(alpha * 100))%"
     }
 
     @objc func tick() {
