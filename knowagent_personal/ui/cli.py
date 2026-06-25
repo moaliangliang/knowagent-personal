@@ -23,6 +23,11 @@ from knowagent_personal.agent.funnel import (
     get_sponsor_text,
     set_dismissed,
 )
+from knowagent_personal.agent.pro import (
+    is_pro,
+    get_pro_features_text,
+    require_pro,
+)
 from knowagent_personal.config import Config, CONFIG_DIR
 from knowagent_personal.agent.aliases import resolve_cn
 
@@ -264,14 +269,9 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history")
 class PersonalAgentREPL(cmd.Cmd):
     prompt = f"{Color.info('› ')}"
 
-    # 清当前行 + prompt（\r 回到行首，\033[K 清除到行尾）
-    _CLEAN_PROMPT = "\r\033[K" + f"{Color.info('› ')}"
-
     def __init__(self, config: Config, interactive=True):
         super().__init__()
         self.config = config
-        # 使用带清行前缀的 prompt（防止上下翻历史残留）
-        self.prompt = self._CLEAN_PROMPT
         self._last_output = ""
         self._interactive = interactive
         self._conv_history = []
@@ -340,6 +340,14 @@ class PersonalAgentREPL(cmd.Cmd):
         except Exception:
             pass
 
+    def postcmd(self, stop: bool, line: str) -> bool:
+        """命令后输出空行，隔离上下命令输出。"""
+        # 输出一个空行，防止上一个命令的残留内容可见
+        # （readline 上下翻历史时不会清行，空行让残留不可见）
+        self.stdout.write("\n")
+        self.stdout.flush()
+        return stop
+
     def default(self, line):
         if not line.strip():
             return
@@ -354,6 +362,9 @@ class PersonalAgentREPL(cmd.Cmd):
             return
         if cmd in ("sponsor", "赞助", "赞助作者", "sponsors"):
             self.do_sponsor("")
+            return
+        if cmd in ("pro", "专业版", "激活", "activate", "license"):
+            self.do_pro(cmd)
             return
 
         self._process(line)
@@ -501,17 +512,72 @@ class PersonalAgentREPL(cmd.Cmd):
         # 如有赞助链接，询问是否打开
         if get_sponsor_text(lang):
             try:
-                resp = input(f"  {Color.info('打开赞助页面? (y/n): ')}").strip().lower()
+                resp = input(f"  {Color.info('打开购买页面? (y/n): ')}").strip().lower()
                 if resp in ("y", "yes", "是", "ok"):
-                    open_sponsor()
-                    print(f"  {Color.ok('✅')} 赞助页面已打开，感谢你的支持！")
+                    open_sponsor(lang)
+                    print(f"  {Color.ok('✅')} 页面已打开，感谢你的支持！")
             except (EOFError, KeyboardInterrupt):
                 print()
 
     def do_dismiss(self, arg):
-        """🙈 不再显示赞助/Star 提示"""
+        """🙈 不再显示赞助/Star/Pro 提示"""
         set_dismissed()
-        print(f"  {Color.dim('已关闭提示，输入 star 或 sponsor 可随时查看')}")
+        from knowagent_personal.agent.help_text import get_system_lang
+        lang = get_system_lang()
+        if lang == "zh":
+            print(f"  {Color.dim('已关闭提示，输入 star / sponsor / pro 可随时查看')}")
+        else:
+            print(f"  {Color.dim('Prompts dismissed. Type star / sponsor / pro anytime')}")
+
+    def do_pro(self, arg):
+        """💎 查看 Pro 版本信息 / 激活 License"""
+        from knowagent_personal.agent.pro import is_pro, get_pro_features_text, _purchase_url, _purchase_price
+        from knowagent_personal.agent.help_text import get_system_lang
+
+        lang = get_system_lang()
+        activated = is_pro()
+
+        print()
+        if activated:
+            print(f"  {Color.bold('💎 KnowAgent Pro 已激活')}  {Color.ok('●')}\n")
+        else:
+            price = _purchase_price(lang)
+            url = _purchase_url(lang)
+            print(f"  {Color.bold('💎 KnowAgent Pro')}  —  {Color.info(price)}")
+            print(f"  {Color.dim(url)}\n")
+
+        print(get_pro_features_text(lang))
+        print()
+
+        if not activated:
+            act = arg.strip().lower()
+            if act in ("activate", "激活", "key", "license"):
+                self._activate_pro(lang)
+            else:
+                try:
+                    resp = input(f"  {Color.info('输入 activation 激活 License，或回车跳过: ')}").strip().lower()
+                    if resp in ("license", "activate", "激活", "key", "activation"):
+                        self._activate_pro(lang)
+                except (EOFError, KeyboardInterrupt):
+                    print()
+
+    def _activate_pro(self, lang: str):
+        """交互式 Pro License Key 激活流程。"""
+        from knowagent_personal.agent.pro import _validate_key
+
+        print(f"\n  {Color.dim('请输入 License Key（格式: KA-PRO-XXXXXXXXXXXXXXXXXXXX）:')}")
+        try:
+            key = input(f"  {Color.info('> ')}").strip()
+            if _validate_key(key):
+                self.config.set("pro.license_key", key)
+                self.config.save()
+                print(f"\n  {Color.ok('✅ Pro 已激活！')} 感谢你的支持！\n")
+                print(f"  {Color.dim('所有 Pro 功能已解锁，输入 pro 查看功能列表')}")
+            else:
+                print(f"\n  {Color.err('❌ License Key 格式无效')}")
+                print(f"  {Color.dim('请联系 knowagent@example.com 获取有效 Key')}")
+        except (EOFError, KeyboardInterrupt):
+            print(f"\n  {Color.dim('已取消')}")
 
     def do_help(self, arg):
         """Show help (auto-detect system language)"""
