@@ -1,4 +1,15 @@
-"""Agent core - LLM tool-calling loop for local execution."""
+"""Agent core - LLM tool-calling loop for local execution.
+
+Architecture:
+  Agent (orchestrator)
+    └─ Harness (deterministic infrastructure)
+         ├─ Registry       — tool metadata & discovery
+         ├─ Permissions    — deny-first access control
+         ├─ Executor       — scheduling, retry, recording
+         ├─ Events         — lifecycle hooks
+         ├─ Context        — tiered memory management
+         └─ Sandbox        — subprocess isolation
+"""
 
 import json
 import time
@@ -6,6 +17,7 @@ import uuid
 from typing import Any
 
 from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
+from knowagent_personal.harness.integration import install_harness
 
 SYSTEM_PROMPT = """你是 Mac Agent Personal，一个本地运行的 Mac 桌面 AI 助手。
 你有 70 多个本地命令可以控制 Mac 系统，包括：
@@ -58,6 +70,31 @@ class Agent:
         self.conversation_id = str(uuid.uuid4())[:8]
         self.rag = None
 
+        # ── Harness 注入 ──────────────────────────────────
+        self._harness = install_harness(
+            agent_instance=self,
+            config=config.raw if hasattr(config, 'raw') else {},
+            migrate_legacy=True,
+        )
+        # 从配置加载权限模式
+        harness_mode = config.get("harness.permission_mode", "normal")
+        self._harness.set_permission_mode(harness_mode)
+        # 加载持久化权限规则
+        import os as _os
+        rules_path = _os.path.expanduser("~/.knowagent/permissions.json")
+        if _os.path.exists(rules_path):
+            self._harness.permissions.load_rules(rules_path)
+        # 安装默认 Hooks
+        from knowagent_personal.harness.default_hooks import install_default_hooks
+        install_default_hooks()
+        # 从 SQLite 恢复持久化记忆（T2 用户偏好）
+        db_path = config.get("storage.db_path", "~/.knowagent/personal.db")
+        if db_path:
+            self._harness.context.memory.load_from_db(db_path)
+        # 发送 session.start 事件
+        self._harness.events.emit("session.start")
+        # ───────────────────────────────────────────────────
+
         # 注意: RAG 改为懒加载，启动时不初始化（避免 ChromaDB 加载过慢）
         # 首次需要时通过 _ensure_rag() 自动初始化
 
@@ -80,7 +117,7 @@ class Agent:
         return False
 
     def _load_history(self):
-        """Load recent conversation history from SQLite."""
+        """Load recent conversation history from SQLite into memory."""
         try:
             from knowagent_personal.memory.db import init_db, get_recent_messages
 
@@ -92,6 +129,11 @@ class Agent:
                     self.conversation_history.append(
                         {"role": role, "content": content}
                     )
+                    # 同时喂给 Harness 的 TieredMemory
+                    harness = getattr(self, '_harness', None)
+                    if harness and harness.context:
+                        key = f"history:{role}:{msg.get('id', '0')}"
+                        harness.context.add_fact(key, content)
         except Exception:
             pass
 
@@ -107,9 +149,15 @@ class Agent:
     def process(self, user_input: str) -> str:
         """Process user input through the LLM tool-calling loop."""
         start_time = time.time()
+        harness = getattr(self, '_harness', None)
 
         # Save user message to SQLite
         self._save_message("user", user_input)
+
+        # ── Harness 上下文管理 ──
+        if harness and harness.context:
+            harness.context.add_user_message(user_input)
+        # ────────────────────────
 
         self.conversation_history.append({
             "role": "user",
@@ -139,8 +187,13 @@ class Agent:
                     except json.JSONDecodeError:
                         func_args = {}
 
-                    # Execute tool
+                    # Execute tool (goes through harness if injected)
                     result = self._execute_tool(func_name, func_args)
+
+                    # ── Harness: 记录工具结果到上下文 ──
+                    if harness and harness.context:
+                        harness.context.add_tool_result(func_name, result)
+                    # ──────────────────────────────────────
 
                     # Add assistant message with tool call
                     messages.append({
@@ -163,6 +216,12 @@ class Agent:
                 })
                 # Save assistant response to SQLite
                 self._save_message("assistant", reply)
+
+                # ── Harness: 记录助手回复到上下文 ──
+                if harness and harness.context:
+                    harness.context.add_assistant_message(reply)
+                # ──────────────────────────────────────
+
                 elapsed = time.time() - start_time
                 if elapsed > 1:
                     return f"{reply}\n\n⏱ {elapsed:.1f}s"
@@ -173,11 +232,30 @@ class Agent:
         return "❌ 处理次数过多（超过5轮工具调用），请简化需求或重试。"
 
     def _execute_tool(self, name: str, params: dict) -> str:
-        """Execute a tool by name with params dict."""
+        """Execute a tool by name with params dict (harness-aware)."""
+        # 先尝试通过 Harness 执行（含权限检查+事件通知+隔离）
+        harness = getattr(self, '_harness', None)
+        if harness:
+            result = harness.execute(name, params)
+            if result.success:
+                return result.output
+            # 如果被权限拒绝且需要确认，fall through 到直接执行
+            if not result.success and '未注册' in result.error:
+                return result.error
+            # 权限拒绝时，尝试直接执行（兼容旧行为）
+            if '需要确认' in result.error:
+                handler = self.tools.get(name)
+                if handler:
+                    try:
+                        return str(handler(params))
+                    except Exception as e:
+                        return f"❌ 执行 {name} 失败: {e}"
+                return result.error
+
+        # Fallback: 直接执行（无 harness 时）
         handler = self.tools.get(name)
         if not handler:
             return f"❌ 未知命令: {name}"
-
         try:
             result = handler(params)
             return str(result)
@@ -186,10 +264,28 @@ class Agent:
 
     def _build_messages(self) -> list[dict]:
         """Build message array with system prompt + conversation history."""
+        # 如果 Harness 的 ContextManager 可用，用它组装
+        harness = getattr(self, '_harness', None)
+        if harness and harness.context:
+            return harness.context.build_messages()
+
+        # Fallback: 直接拼接（无 harness 时）
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        # Include last 20 turns for context (~40 messages)
         messages.extend(self.conversation_history[-40:])
         return messages
+
+    def harness_status(self) -> dict:
+        """查看 Harness 层状态。"""
+        harness = getattr(self, '_harness', None)
+        if not harness:
+            return {"harness": "未注入"}
+        return harness.status_report()
+
+    def compact_context(self):
+        """手动触发上下文压缩。"""
+        harness = getattr(self, '_harness', None)
+        if harness and harness.context:
+            harness.context.memory.compact()
 
     def local_chat(self, text: str) -> str:
         """Fallback when no LLM available."""
@@ -215,3 +311,14 @@ class Agent:
             "试试直接说命令：播放周杰伦的歌 / 系统状态 / 截图 / 帮助\n"
             "或者确保 Ollama 正在运行以获得 AI 对话能力"
         )
+
+    def stop(self):
+        """停止 Agent，持久化记忆，触发 session.end 事件。"""
+        harness = getattr(self, '_harness', None)
+        if harness:
+            # 持久化 T2 记忆到 SQLite
+            db_path = self.config.get("storage.db_path", "~/.knowagent/personal.db")
+            if db_path:
+                harness.context.memory.save_to_db(db_path)
+            harness.events.emit("session.end")
+            harness.executor.shutdown()

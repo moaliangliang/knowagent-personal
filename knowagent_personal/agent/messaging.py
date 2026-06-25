@@ -169,6 +169,11 @@ def _send_webhook_markdown(platform: str, title: str, markdown: str) -> str:
 #  通过 macOS UI 自动化发送（不使用 API）
 # ═════════════════════════════════════════════════════════
 
+def _osa_escape(s: str) -> str:
+    """Escape string for safe use inside an AppleScript string literal."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _send_via_ui(platform: str, contact: str, text: str) -> str:
     """通过 macOS UI 自动化模拟发送消息。
     需要目标应用已安装并登录。
@@ -192,7 +197,7 @@ def _send_via_ui(platform: str, contact: str, text: str) -> str:
             'tell application "System Events" to keystroke "f" using command down'], timeout=5)
         time.sleep(0.5)
         subprocess.run(["osascript", "-e",
-            f'tell application "System Events" to keystroke "{contact}"'], timeout=5)
+            f'tell application "System Events" to keystroke "{_osa_escape(contact)}"'], timeout=5)
         time.sleep(1.5)
 
         # 3. 回车进入对话
@@ -201,7 +206,7 @@ def _send_via_ui(platform: str, contact: str, text: str) -> str:
         time.sleep(0.5)
 
         # 4. 输入消息
-        safe_text = text.replace('"', '\\"').replace("\n", "\\n")
+        safe_text = _osa_escape(text)
         subprocess.run(["osascript", "-e",
             f'tell application "System Events" to keystroke "{safe_text}"'], timeout=10)
 

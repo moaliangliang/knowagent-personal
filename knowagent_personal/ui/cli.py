@@ -15,6 +15,14 @@ from knowagent_personal.agent.tools import COMMANDS, cmd_system_status, cmd_musi
 from knowagent_personal.agent.core import Agent
 from knowagent_personal.agent.skill_manager import SkillManager, SKILL_DIR
 from knowagent_personal.agent.llm import LLMClient
+from knowagent_personal.agent.funnel import (
+    increment_launch,
+    get_funnel_message,
+    open_github,
+    open_sponsor,
+    get_sponsor_text,
+    set_dismissed,
+)
 from knowagent_personal.config import Config, CONFIG_DIR
 from knowagent_personal.agent.aliases import resolve_cn
 
@@ -255,6 +263,15 @@ class PersonalAgentREPL(cmd.Cmd):
                 print(f"  {Color.warn('⚠')} {llm_msg}")
                 print(f"  {Color.dim('  仅可使用本地命令模式，输入 help 查看命令列表')}")
 
+            # ── 用户转化漏斗提示 ────────────────────────────────
+            state = increment_launch()
+            funnel_msg = get_funnel_message(state, lang)
+            if funnel_msg and not self.config.get("conversion.dismissed", False):
+                print()
+                for line in funnel_msg.split("\n"):
+                    print(f"  {line}")
+                print()
+
     def __del__(self):
         try:
             readline.write_history_file(HISTORY_FILE)
@@ -264,6 +281,19 @@ class PersonalAgentREPL(cmd.Cmd):
     def default(self, line):
         if not line.strip():
             return
+
+        # Catch standalone dismiss/star/sponsor typed in response to funnel prompt
+        cmd = line.strip().lower()
+        if cmd in ("star", "星", "stars"):
+            self.do_star("")
+            return
+        if cmd in ("dismiss", "不再提示", "no"):
+            self.do_dismiss("")
+            return
+        if cmd in ("sponsor", "赞助", "赞助作者", "sponsors"):
+            self.do_sponsor("")
+            return
+
         self._process(line)
 
     def _process(self, text):
@@ -393,6 +423,33 @@ class PersonalAgentREPL(cmd.Cmd):
         return []
 
     # ── 内置命令 ──────────────────────────────────────────
+
+    def do_star(self, arg):
+        """🌟 在 GitHub 上给项目点 Star"""
+        open_github()
+        print(f"  {Color.ok('✅')} GitHub 页面已打开，谢谢支持！")
+
+    def do_sponsor(self, arg):
+        """☕ 查看赞助方式"""
+        from knowagent_personal.agent.help_text import get_system_lang
+        lang = get_system_lang()
+        print()
+        print(get_sponsor_text(lang))
+        print()
+        # 如有赞助链接，询问是否打开
+        if get_sponsor_text(lang):
+            try:
+                resp = input(f"  {Color.info('打开赞助页面? (y/n): ')}").strip().lower()
+                if resp in ("y", "yes", "是", "ok"):
+                    open_sponsor()
+                    print(f"  {Color.ok('✅')} 赞助页面已打开，感谢你的支持！")
+            except (EOFError, KeyboardInterrupt):
+                print()
+
+    def do_dismiss(self, arg):
+        """🙈 不再显示赞助/Star 提示"""
+        set_dismissed()
+        print(f"  {Color.dim('已关闭提示，输入 star 或 sponsor 可随时查看')}")
 
     def do_help(self, arg):
         """Show help (auto-detect system language)"""

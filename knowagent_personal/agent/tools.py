@@ -37,6 +37,16 @@ def _run_osa(script: str, timeout: int = 30) -> str:
     return r.stdout.strip()
 
 
+def _osa_escape(s: str) -> str:
+    """Escape a string for safe use in an AppleScript string literal (``""``).
+
+    Escapes ``\\`` first, then ``"``, so that backslashes before quotes
+    do not break the escaping.  AppleScript only recognises ``\\"`` as an
+    escape sequence inside a string literal.
+    """
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _fmt_time(seconds: int) -> str:
     """秒数 → 可读时间"""
     days = seconds // 86400
@@ -323,10 +333,14 @@ def cmd_mail_master(params: dict) -> str:
 
 def cmd_mail_send(params: dict) -> str:
     """通过 Mac Mail.app 发送邮件"""
-    to, subject, body = params.get("to", ""), params.get("subject", ""), params.get("body", "")
-    if not to or not subject:
+    raw_to = params.get("to", "")
+    raw_subject = params.get("subject", "")
+    raw_body = params.get("body", "")
+    if not raw_to or not raw_subject:
         return "❌ 需要 to 和 subject 参数"
-    body = body.replace('"', '\\"')
+    to = _osa_escape(raw_to)
+    subject = _osa_escape(raw_subject)
+    body = _osa_escape(raw_body)
     script = f'''
     tell application "Mail"
         set m to make new outgoing message with properties {{subject:"{subject}", content:"{body}"}}
@@ -335,22 +349,25 @@ def cmd_mail_send(params: dict) -> str:
     end tell'''
     try:
         _run_osa(script)
-        return f"✅ 邮件已发送至 {to}，主题: {subject}"
+        return f"✅ 邮件已发送至 {raw_to}，主题: {raw_subject}"
     except Exception as e:
         return f"❌ 发送失败: {e}"
 
 
 def cmd_notification(params: dict) -> str:
     """Mac 通知弹窗"""
-    text = params.get("text", "Mac Agent 通知")
-    title = params.get("title", "Mac Agent Personal")
-    subtitle = params.get("subtitle", "")
+    raw_text = params.get("text", "Mac Agent 通知")
+    raw_title = params.get("title", "Mac Agent Personal")
+    raw_subtitle = params.get("subtitle", "")
+    text = _osa_escape(raw_text)
+    title = _osa_escape(raw_title)
+    subtitle = _osa_escape(raw_subtitle)
     script = f'display notification "{text}" with title "{title}"'
     if subtitle:
         script += f' subtitle "{subtitle}"'
     script += ' sound name "default"'
     _run_osa(script)
-    return f"✅ 通知已发送: {title} - {text}"
+    return f"✅ 通知已发送: {raw_title} - {raw_text}"
 
 
 def cmd_file_list(params: dict) -> str:
@@ -508,9 +525,10 @@ def cmd_music_search(params: dict) -> str:
     keyword = params.get("keyword", "")
     if not keyword:
         return "❌ 需要 keyword 参数"
+    safe_keyword = _osa_escape(keyword)
     script = f'''
     tell application "Music"
-        set results to (every track whose name contains "{keyword}")
+        set results to (every track whose name contains "{safe_keyword}")
         set output to ""
         repeat with t in results
             set output to output & name of t & " - " & artist of t & return
@@ -837,7 +855,8 @@ def cmd_reminder_add(params: dict) -> str:
     text = params.get("text", "")
     if not text:
         return "❌ 需要 text 参数"
-    _run_osa(f'tell application "Reminders" to make new reminder with properties {{name:"{text}"}}')
+    safe_text = _osa_escape(text)
+    _run_osa(f'tell application "Reminders" to make new reminder with properties {{name:"{safe_text}"}}')
     return f"✅ 提醒已添加: {text}"
 
 
@@ -852,9 +871,10 @@ def cmd_contacts_search(params: dict) -> str:
     kw = params.get("keyword", "")
     if not kw:
         return "❌ 需要 keyword 参数"
+    safe_kw = _osa_escape(kw)
     script = f'''tell application "Contacts"
         set output to ""
-        set people to every person whose name contains "{kw}"
+        set people to every person whose name contains "{safe_kw}"
         repeat with p in people
             set output to output & name of p & return
         end repeat

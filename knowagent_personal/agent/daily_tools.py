@@ -35,8 +35,15 @@ def _read_clipboard_history(limit: int = 10) -> list[dict]:
         return []
 
 
+def _osa_escape(s: str) -> str:
+    """Escape string for safe use inside an AppleScript string literal."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _notify(title: str, message: str) -> None:
     """通过 osascript 显示通知。"""
+    title = _osa_escape(title)
+    message = _osa_escape(message)
     script = f'display notification "{message}" with title "{title}" sound name "default"'
     subprocess.run(["osascript", "-e", script], capture_output=True, timeout=10)
 

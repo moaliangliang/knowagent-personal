@@ -54,6 +54,21 @@ DEFAULT_CONFIG = {
         "history_file": os.path.join(CONFIG_DIR, "history"),
         "color_enabled": True,
     },
+    "telemetry": {
+        "enabled": False,            # 匿名使用统计（默认关闭，纯 opt-in）
+    },
+    "conversion": {
+        "dismissed": False,          # 用户是否选择不再看到漏斗提示
+        "last_prompt_version": 0,    # 上次展示的提示版本号
+    },
+    "harness": {
+        "permission_mode": "normal",  # plan | normal | accept_edits | elevated | trusted
+        "permissions_file": os.path.join(CONFIG_DIR, "permissions.json"),
+        "max_retries": 2,
+        "audit_log": True,
+        "context_compression": True,
+        "max_history_turns": 20,
+    },
 }
 
 
@@ -142,7 +157,7 @@ class Config:
         if p.get("https"):
             proxies["https"] = p["https"]
         if p.get("socks"):
-            proxies["socks5"] = proxies.get("socks5h", p["socks"])
+            proxies["socks5"] = p["socks"]
         return proxies or None
 
     def save(self):
