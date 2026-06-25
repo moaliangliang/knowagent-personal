@@ -86,6 +86,8 @@ NL_RULES = [
     (["番茄", "番茄钟", "番茄时钟", "timer", "计时", "专注"], lambda kw: (
         ("timer", {"minutes": _extract_number(kw) or 25, "name": "番茄钟"})
     )),
+    # 代办 — 必须在别名"删除"→trash 之前匹配
+    (["代办", "待办", "todo"], lambda kw: _parse_todo(kw)),
     (["朗读", "说", "speak", "say"], lambda kw: ("speak", {"text": kw or "你好"})),
     (["打开", "启动", "open"], lambda kw: ("open_app", {"name": kw}) if kw else ("help", {})),
     (["知识库", "知识", "文档", "笔记", "rag"], lambda kw: ("rag", {"subcmd": "search", "query": kw}) if kw and kw != "知识库" else ("help", {})),
@@ -147,10 +149,10 @@ def parse_natural(text: str):
     if text in COMMANDS:
         return (text, {})
 
-    # NL 规则优先匹配：仅对含计时关键词的文本生效
-    # 必须在别名之前，因为别名"打开"会拦截"打开番茄时钟 25分钟"
+    # NL 规则优先匹配：仅对含特定关键词的文本生效
+    # 必须在别名之前，防止别名"打开"/"删除"等通用词拦截
     import re as _re
-    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注)', text, re.I):
+    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo)', text, re.I):
         nl_result = _match_nl_rules(text)
         if nl_result:
             return nl_result
@@ -191,6 +193,32 @@ def parse_natural(text: str):
         return ("_workflow", {})
 
     return _match_nl_rules(text)
+
+
+def _parse_todo(text: str) -> tuple | None:
+    """解析代办相关自然语言。"""
+    import re as _re
+    t = text.strip()
+    if not t:
+        return ("todo_list", {})
+    # 删除所有逾期代办 / 删除代办
+    if _re.search(r'删除|清除|清理|删掉', t):
+        # 提取 id（如果有）
+        ids = _re.findall(r'#?(\d+)', t)
+        if ids:
+            return ("todo_delete", {"id": int(ids[0])})
+        return ("todo_delete", {"id": 0})  # 需要确认
+    # 完成代办 / 标记完成
+    if _re.search(r'完成|做完|搞定|标记|done', t):
+        ids = _re.findall(r'#?(\d+)', t)
+        if ids:
+            return ("todo_done", {"id": int(ids[0])})
+        return ("todo_list", {"include_done": "true"})
+    # 添加代办
+    if _re.search(r'添加|新增|新建|增加|记', t):
+        return ("todo_add", {"title": t})
+    # 默认：列出代办
+    return ("todo_list", {})
 
 
 def _match_nl_rules(text: str):
