@@ -83,12 +83,30 @@ NL_RULES = [
     (["日历", "日程", "今天"], lambda _: ("calendar", {})),
     (["剪贴板", "clipboard", "复制"], lambda _: ("clipboard_read", {})),
     (["锁屏", "锁定"], lambda _: ("lock_screen", {})),
+    (["番茄", "番茄钟", "番茄时钟", "timer", "计时", "专注"], lambda kw: (
+        ("timer", {"minutes": _extract_number(kw) or 25, "name": "番茄钟"})
+    )),
     (["朗读", "说", "speak", "say"], lambda kw: ("speak", {"text": kw or "你好"})),
     (["打开", "启动", "open"], lambda kw: ("open_app", {"name": kw}) if kw else ("help", {})),
     (["知识库", "知识", "文档", "笔记", "rag"], lambda kw: ("rag", {"subcmd": "search", "query": kw}) if kw and kw != "知识库" else ("help", {})),
     (["语音", "说话", "voice", "麦克风"], lambda _: ("voice_input", {})),
     (["工作流", "workflow", "auto"], lambda _: None),
 ]
+
+
+def _extract_number(text: str) -> int | None:
+    """从文本中提取数字，如 '25分钟' → 25, '1小时' → 60。"""
+    import re
+    m = re.search(r'(\d+)\s*小时', text)
+    if m:
+        return int(m.group(1)) * 60
+    m = re.search(r'(\d+)\s*分钟?', text)
+    if m:
+        return int(m.group(1))
+    m = re.search(r'(\d+)', text)
+    if m:
+        return int(m.group(1))
+    return None
 
 
 def _parse_mail_date(text: str) -> str:
@@ -129,6 +147,14 @@ def parse_natural(text: str):
     if text in COMMANDS:
         return (text, {})
 
+    # NL 规则优先匹配：仅对含计时关键词的文本生效
+    # 必须在别名之前，因为别名"打开"会拦截"打开番茄时钟 25分钟"
+    import re as _re
+    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注)', text, re.I):
+        nl_result = _match_nl_rules(text)
+        if nl_result:
+            return nl_result
+
     # 检查中文别名（支持 "翻译 text=hello" 格式）
     resolved = resolve_cn(text)
     if resolved:
@@ -142,7 +168,7 @@ def parse_natural(text: str):
                         params[k] = v
                     else:
                         params["keyword"] = part
-                        params["text"] = part  # bare text 同时作为 text
+                        params["text"] = part
             except Exception:
                 params["keyword"] = rest
                 params["text"] = rest
@@ -158,17 +184,20 @@ def parse_natural(text: str):
                     params[k] = v
                 else:
                     params["keyword"] = part
-                    params["text"] = part  # bare text 同时作为 text
+                    params["text"] = part
             return (cmd_name, params)
 
     if "工作流" in text or "workflow" in text.lower():
         return ("_workflow", {})
 
+    return _match_nl_rules(text)
+
+
+def _match_nl_rules(text: str):
+    """匹配 NL 规则，返回 (命令名, 参数字典) 或 None。"""
     import re as _re
     for keywords, handler in NL_RULES:
         for kw in keywords:
-            # 中文关键字：前缀匹配（"系统"在句子开头/中间都触发）
-            # 英文关键字：整词匹配（避免 "h" 匹配 "hello"）
             if _re.search(r'[一-鿿]', kw):
                 if kw in text:
                     _matched = True

@@ -85,6 +85,7 @@ CN_ALIASES = {
     "计时器": "timer",
     "倒计时": "timer",
     "番茄钟": "timer",
+    "番茄时钟": "timer",
     "剪贴板历史": "clipboard_history",
     "粘贴板历史": "clipboard_history",
     "翻译": "translate",
