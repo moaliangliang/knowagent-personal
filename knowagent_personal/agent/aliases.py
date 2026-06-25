@@ -91,6 +91,14 @@ CN_ALIASES = {
     "翻译": "translate",
     "翻译文本": "translate",
     "快捷指令": "shortcut",
+    "代办": "todo_list",
+    "代办事项": "todo_list",
+    "待办": "todo_list",
+    "待办事项": "todo_list",
+    "添加代办": "todo_add",
+    "添加待办": "todo_add",
+    "完成代办": "todo_done",
+    "删除代办": "todo_delete",
     "捷径": "shortcut",
 
     # ── AI 增强 ──
