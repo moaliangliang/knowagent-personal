@@ -29,13 +29,34 @@ def start_timer(minutes: int = 25, name: str = "番茄钟") -> str:
     root.title("🍅 {name}")
     root.geometry("320x240")
     root.resizable(False, False)
-    root.attributes("-topmost", True)
+    # macOS 置顶策略: tkinter 自身 lift/focus 被系统限制，
+    # 因此用 osascript 强制激活 Python 进程窗口
+    try:
+        _sp.run([
+            "osascript", "-e",
+            'tell application "System Events" to set frontmost of (every process whose name contains "Python") to true',
+        ], capture_output=True, timeout=3)
+    except Exception:
+        pass
 
-    # 强制置顶 + 获取焦点
+    root.attributes("-topmost", True)
     root.lift()
-    root.focus_force()
-    root.after(100, lambda: (root.lift(), root.focus_force(), root.attributes("-topmost", True)))
-    root.after(500, lambda: (root.lift(), root.attributes("-topmost", True)))
+
+    # 持续尝试置顶（前 3 秒每秒一次）
+    def _bring_to_front(count=0):
+        if count > 6:
+            return
+        try:
+            root.lift()
+            root.attributes("-topmost", True)
+            _sp.run([
+                "osascript", "-e",
+                'tell application "System Events" to set frontmost of (every process whose name contains "Python") to true',
+            ], capture_output=True, timeout=2)
+        except Exception:
+            pass
+        root.after(500, lambda: _bring_to_front(count + 1))
+    root.after(100, lambda: _bring_to_front(0))
 
     bg = "#2c2c2c"
     accent = "#e67e22"
