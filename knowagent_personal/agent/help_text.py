@@ -142,7 +142,19 @@ HELP_ZH: dict = {
 
 
 def get_help_text(lang: str | None = None) -> dict:
-    """获取对应语言的帮助文本"""
+    """获取对应语言的帮助文本（自动注入动态命令计数）。"""
     if lang is None:
         lang = get_system_lang()
-    return HELP_ZH if lang == "zh" else HELP_EN
+    text = HELP_ZH if lang == "zh" else HELP_EN
+
+    # 从注册表动态注入命令计数
+    try:
+        from knowagent_personal.harness.registry import TOOL_REGISTRY
+        count = TOOL_REGISTRY.count
+        if count > 0:
+            text = dict(text)  # 不修改全局
+            text["subtitle"] = text["subtitle"].replace("83 ", f"{count} ")
+    except Exception:
+        pass
+
+    return text

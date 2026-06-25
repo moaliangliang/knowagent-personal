@@ -581,19 +581,19 @@ def import_from_legacy(commands: dict[str, Callable],
                        schemas: dict[str, dict] | None = None) -> None:
     """从旧版 COMMANDS 字典批量迁移到 ToolDef 注册表。
 
-    用于渐进式迁移：现有模块可以先用这个函数注册，
-    之后逐步将每个 cmd_* 改为 @register_tool 装饰器。
+    与 @register_tool 保持一致：如果函数名以 cmd_ 开头，自动去除前缀。
     """
     for cmd_name, handler in commands.items():
-        if TOOL_REGISTRY.get(cmd_name):
+        tool_name = cmd_name[4:] if cmd_name.startswith("cmd_") else cmd_name
+        if TOOL_REGISTRY.get(tool_name):
             continue  # 同名工具已存在，跳过
 
-        inferred_cat = _infer_category(cmd_name)
-        perms = _infer_permission(cmd_name, inferred_cat)
+        inferred_cat = _infer_category(tool_name)
+        perms = _infer_permission(tool_name, inferred_cat)
         schema = (schemas or {}).get(cmd_name, {})
 
         tool = ToolDef(
-            name=cmd_name,
+            name=tool_name,
             handler=handler,
             category=inferred_cat,
             permission=perms,

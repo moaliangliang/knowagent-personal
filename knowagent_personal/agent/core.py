@@ -267,26 +267,16 @@ class Agent:
 
     def _execute_tool(self, name: str, params: dict) -> str:
         """Execute a tool by name with params dict (harness-aware)."""
-        # 先尝试通过 Harness 执行（含权限检查+事件通知+隔离）
+        # 通过 Harness 执行（含权限检查+事件通知+隔离）
         harness = getattr(self, '_harness', None)
         if harness:
             result = harness.execute(name, params)
             if result.success:
                 return result.output
-            # 如果被权限拒绝且需要确认，fall through 到直接执行
-            if not result.success and '未注册' in result.error:
-                return result.error
-            # 权限拒绝时，尝试直接执行（兼容旧行为）
-            if '需要确认' in result.error:
-                handler = self.tools.get(name)
-                if handler:
-                    try:
-                        return str(handler(params))
-                    except Exception as e:
-                        return f"❌ 执行 {name} 失败: {e}"
-                return result.error
+            # 权限拒绝或需确认 → 返回错误，不绕过
+            return result.error
 
-        # Fallback: 直接执行（无 harness 时）
+        # Fallback: 直接执行（无 harness 时，仅兼容旧代码）
         handler = self.tools.get(name)
         if not handler:
             return f"❌ 未知命令: {name}"

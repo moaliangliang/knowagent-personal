@@ -105,7 +105,8 @@ class DenyFirstPolicy:
         评估顺序：
         1. 先检查 deny 规则（deny 优先）
         2. 再检查 allow 规则
-        3. 最后按权限模式默认策略
+        3. 再检查用户级授权
+        4. 最后按权限模式默认策略
         """
         name = tool.name
 
@@ -122,12 +123,25 @@ class DenyFirstPolicy:
                 reason=rule.reason or f"工具 {name} 被策略拒绝",
             )
 
-        # Step 2: 检查用户级授权
+        # Step 2: 检查 allow 规则（在 deny 之后、mode 之前）
+        for rule in self._rules:
+            if rule.effect != "allow":
+                continue
+            if not _match_pattern(rule.tool_name, name):
+                continue
+            if rule.user != "*" and rule.user != user:
+                continue
+            return PermissionVerdict(
+                allowed=True,
+                reason=rule.reason or f"策略允许: {name}",
+            )
+
+        # Step 3: 检查用户级授权
         user_grants = self._user_grants.get(user, set())
         if name in user_grants:
             return PermissionVerdict(allowed=True, reason="用户已授权")
 
-        # Step 3: 按权限模式处理
+        # Step 4: 按权限模式处理
         return self._mode_evaluate(tool, mode)
 
     def _mode_evaluate(self, tool: ToolDef,

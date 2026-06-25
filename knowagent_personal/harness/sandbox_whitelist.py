@@ -334,25 +334,41 @@ _params = {json.dumps(params)}
 
     @staticmethod
     def _has_dangerous_imports(script: str) -> bool:
-        """检查脚本中是否包含危险导入。"""
-        dangerous = [
-            r'import\s+os\s',
-            r'import\s+subprocess',
-            r'import\s+socket',
-            r'import\s+ctypes',
-            r'import\s+sys\s',
-            r'from\s+os\s+import',
-            r'from\s+subprocess\s+import',
-            r'from\s+socket\s+import',
-            r'from\s+ctypes\s+import',
-            r'\bsys\.(?:stdin|stdout)\b',
-            r'\bos\.(?:system|popen|fork|exec)',
-            r'\bexec\(|\beval\(|\bcompile\(',
+        """检查脚本中是否包含危险导入。
+
+        使用 AST 分析替代纯正则匹配，防止 importlib/getattr/vars 绕过.
+        """
+        # 正则快速路径（低开销预检）
+        fast_patterns = [
+            r'(?:^|[\n;])\s*import\s+(?:os|subprocess|socket|ctypes|sys)\b',
+            r'(?:^|[\n;])\s*from\s+(?:os|subprocess|socket|ctypes|sys)\s+import',
+            r'\bos\.(?:system|popen|fork|exec|remove)',
+            r'\b(?:exec|eval|compile)\s*\(',
             r'__import__\s*\(',
-            r'open\(\s*["\']/etc/',
-            r'open\(\s*["\']/dev/',
+            r'importlib\s*\.\s*(?:import_module|__import__)',
+            r'getattr\s*\(\s*__builtins__',
+            r'vars\s*\(\s*__builtins__\s*\)',
+            r'open\s*\(\s*["\']/(?:etc|dev|proc|root|tmp)',
+            r'builtins\.__dict__',
         ]
-        for pattern in dangerous:
-            if re.search(pattern, script):
+        for pattern in fast_patterns:
+            if re.search(pattern, script, re.MULTILINE):
                 return True
+
+        # AST 深度分析（捕获拼接/混淆绕过）
+        try:
+            import ast
+            tree = ast.parse(script)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    func = node.func
+                    if isinstance(func, ast.Attribute) and func.attr in ('import_module', '__import__'):
+                        return True
+                    if isinstance(func, ast.Name) and func.id == '__import__':
+                        return True
+                    if isinstance(func, ast.Name) and func.id in ('exec', 'eval', 'compile'):
+                        return True
+        except SyntaxError:
+            return True
+
         return False
