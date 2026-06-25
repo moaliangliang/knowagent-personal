@@ -13,6 +13,7 @@ import time
 
 from knowagent_personal.agent.tools import COMMANDS, cmd_system_status, cmd_music_search_online
 from knowagent_personal.agent.core import Agent
+from knowagent_personal.agent.skill_manager import SkillManager, SKILL_DIR
 from knowagent_personal.agent.llm import LLMClient
 from knowagent_personal.config import Config, CONFIG_DIR
 from knowagent_personal.agent.aliases import resolve_cn
@@ -373,6 +374,18 @@ class PersonalAgentREPL(cmd.Cmd):
             if self._interactive:
                 print(f"  {Color.dim(f'🔌 加载插件: {p.name}')}")
 
+        # Load skills from SKILL_DIR
+        try:
+            sm = SkillManager()
+            sm.discover_skills()
+            sm.register_all(COMMANDS, {})
+            if self._interactive:
+                skills = sm.list_skills()
+                for s in skills:
+                    print(f"  {Color.dim('🧠 加载技能: ' + s['name'])}")
+        except Exception:
+            pass
+
     def completenames(self, text, *ignored):
         return [f"{name} " for name in COMMANDS if name.startswith(text)]
 
@@ -495,6 +508,22 @@ class PersonalAgentREPL(cmd.Cmd):
             print("rag index <路径>     索引文档目录（默认 ~/Documents）")
             print("rag search <关键词>  搜索知识库")
             print("rag clear           清除对话历史")
+
+    def do_skill(self, arg):
+        """管理技能。用法: skill action=list/search/install/remove/info [name=] [source=] [query=]"""
+        from knowagent_personal.agent.plugin_tools import cmd_skill
+
+        params = {}
+        parts = arg.strip().split()
+        if parts:
+            params["action"] = parts[0]
+            for p in parts[1:]:
+                if "=" in p:
+                    k, v = p.split("=", 1)
+                    params[k] = v
+                else:
+                    params[k] = p
+        print(cmd_skill(params))
 
     def do_workflow(self, arg):
         """运行预设工作流"""

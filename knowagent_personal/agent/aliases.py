@@ -121,6 +121,16 @@ CN_ALIASES = {
     "VPN": "vpn_status",
     "代理": "vpn_status",
 
+    # ── 企业通讯（新增）──
+    "企业微信": "wecom",
+    "微信通知": "wecom",
+    "飞书": "feishu",
+    "飞书通知": "feishu",
+    "钉钉": "dingtalk",
+    "钉钉通知": "dingtalk",
+    "群发": "broadcast",
+    "通知全部": "broadcast",
+
     # ── 从 NL_RULES 迁移（简单映射，无需参数提取）──
     "播放": "music_search_online",
     "听": "music_search_online",

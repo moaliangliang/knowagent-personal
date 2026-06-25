@@ -2,14 +2,14 @@
   <img src="https://img.shields.io/badge/macOS-11.0+-blue?logo=apple" alt="macOS">
   <img src="https://img.shields.io/badge/Python-3.10+-green?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/commands-78-brightgreen" alt="Commands">
+  <img src="https://img.shields.io/badge/commands-83-brightgreen" alt="Commands">
   <img src="https://img.shields.io/github/stars/knowagent/knowagent-personal?style=social" alt="Stars">
 </p>
 
 <h1 align="center">🧠 Mac Agent Personal</h1>
 <p align="center">
   <b>本地 Mac 桌面 AI 助手</b><br>
-  78 个系统命令 · 中文自然语言 · Ollama/OpenAI · 开源免费
+  83 个系统命令 · 中文自然语言 · Ollama/OpenAI · 开源免费
 </p>
 
 <p align="center">
@@ -33,6 +33,7 @@
 | 🎵 **音乐 & 邮件** | 8 | Apple Music播放/搜索/音量/邮件收/邮件发/邮箱大师 |
 | ⌨️ **UI & 键盘** | 14 | UI树/查找/点击/键盘输入/快捷键/剪贴板/朗读/语音/联系人/备忘/工作流/打开应用/打开URL |
 | 🔐 **安全 & 工具** | 5 | 凭据管理(Keychain)/剪贴板监控/配置热加载 |
+| 💬 **企业通讯** | 4 | 企业微信/飞书/钉钉消息发送、一键群发 |
 
 > **总计 78 个命令**，全部支持中文别名调用（157 条别名映射）。
 

@@ -35,6 +35,7 @@ HELP_EN: dict = {
     "natural_title": "Natural Language Examples",
     "ex_categories": {
         "🔧 System Control": ["display_brightness", "system_volume", "system_sleep", "system_shutdown", "system_restart", "screensaver", "focus_mode", "system_status", "battery_status", "wifi_status", "lock_screen"],
+        "💬 Messaging": ["wecom", "feishu", "dingtalk", "broadcast"],
         "🌐 Network Tools": ["my_ip", "speedtest", "http_request", "download", "whois", "ping", "port_check"],
         "📁 File Management": ["file_search", "file_grep", "file_list", "compress", "extract", "trash", "duplicate_finder", "convert_image"],
         "💻 Dev Tools": ["brew", "process", "docker"],
@@ -82,6 +83,7 @@ HELP_ZH: dict = {
     "natural_title": "自然语言示例",
     "ex_categories": {
         "🔧 系统控制": ["display_brightness", "system_volume", "system_sleep", "system_shutdown", "system_restart", "screensaver", "focus_mode", "system_status", "battery_status", "wifi_status", "lock_screen"],
+        "💬 企业通讯": ["wecom", "feishu", "dingtalk", "broadcast"],
         "🌐 网络工具": ["my_ip", "speedtest", "http_request", "download", "whois", "ping", "port_check"],
         "📁 文件管理": ["file_search", "file_grep", "file_list", "compress", "extract", "trash", "duplicate_finder", "convert_image"],
         "💻 开发工具": ["brew", "process", "docker"],
