@@ -267,7 +267,9 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history")
 
 
 class PersonalAgentREPL(cmd.Cmd):
-    prompt = f"{Color.info('› ')}"
+    # 所有 ANSI 码用 \001 / \002 包裹，readline 不计入可见长度
+    # \001\r\033[K\002 = 清当前行  \001\033[96m\002 = 青色  \001\033[0m\002 = 重置
+    prompt = "\001\r\033[K\002\001\033[96m\002› \001\033[0m\002"
 
     def __init__(self, config: Config, interactive=True):
         super().__init__()
