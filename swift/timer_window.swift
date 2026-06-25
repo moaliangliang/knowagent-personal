@@ -17,6 +17,8 @@ let window = NSWindow(
 window.title = "🍅 \(titleArg)"
 window.center()
 window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+window.hidesOnDeactivate = false
 window.makeKeyAndOrderFront(nil)
 window.orderFrontRegardless()
 NSApp.activate(ignoringOtherApps: true)
@@ -77,6 +79,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func tick() {
+        // 每秒重设置顶（防止被其他窗口覆盖）
+        window.orderFrontRegardless()
+        window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+
         if paused { return }
         remaining -= 1
         if remaining <= 0 { finish(); return }
