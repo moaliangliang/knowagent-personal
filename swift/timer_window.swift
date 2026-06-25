@@ -49,7 +49,7 @@ let timerLabel = NSTextField(labelWithString: "00:00")
 timerLabel.font = NSFont.monospacedDigitSystemFont(ofSize: fontSize(64), weight: .bold)
 timerLabel.alignment = .center
 timerLabel.textColor = NSColor(red: 0.902, green: 0.494, blue: 0.133, alpha: 1.0)
-timerLabel.autoresizingMask = [.width, .minXMargin, .maxXMargin]
+timerLabel.autoresizingMask = [.width, .minYMargin, .maxYMargin]
 timerLabel.frame = CGRect(x: 0, y: view.bounds.height * 0.48, width: view.bounds.width, height: view.bounds.height * 0.32)
 view.addSubview(timerLabel)
 
@@ -58,7 +58,7 @@ let statusLabel = NSTextField(labelWithString: titleArg)
 statusLabel.font = NSFont.systemFont(ofSize: fontSize(13))
 statusLabel.alignment = .center
 statusLabel.textColor = NSColor.gray
-statusLabel.autoresizingMask = [.width, .minXMargin, .maxXMargin]
+statusLabel.autoresizingMask = [.width, .minYMargin, .maxYMargin]
 statusLabel.frame = CGRect(x: 0, y: view.bounds.height * 0.36, width: view.bounds.width, height: 20)
 view.addSubview(statusLabel)
 
@@ -68,21 +68,21 @@ let opacityLabel = NSTextField(labelWithString: "不透明度")
 opacityLabel.font = NSFont.systemFont(ofSize: fontSize(10))
 opacityLabel.textColor = NSColor.gray
 opacityLabel.isBezeled = false; opacityLabel.isEditable = false; opacityLabel.backgroundColor = .clear
-opacityLabel.autoresizingMask = [.maxXMargin, .minYMargin]
+opacityLabel.autoresizingMask = [.maxXMargin, .minYMargin, .maxYMargin]
 opacityLabel.frame = CGRect(x: pctX(6), y: pctY(26), width: 55, height: fontSize(14))
 view.addSubview(opacityLabel)
 
 let opacitySlider = NSSlider(value: Double(opacityVal), minValue: 0.2, maxValue: 1.0, target: nil, action: nil)
 opacitySlider.frame = CGRect(x: pctX(22), y: pctY(25), width: pctX(54), height: 20)
 opacitySlider.isContinuous = true
-opacitySlider.autoresizingMask = [NSView.AutoresizingMask.width, .minXMargin, .maxXMargin]
+opacitySlider.autoresizingMask = [NSView.AutoresizingMask.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 view.addSubview(opacitySlider)
 
 let opacityValLabel = NSTextField(labelWithString: "50%")
 opacityValLabel.font = NSFont.monospacedDigitSystemFont(ofSize: fontSize(10), weight: .regular)
 opacityValLabel.textColor = NSColor.gray
 opacityValLabel.isBezeled = false; opacityValLabel.isEditable = false; opacityValLabel.backgroundColor = .clear
-opacityValLabel.autoresizingMask = [.minXMargin, .minYMargin]
+opacityValLabel.autoresizingMask = [.minXMargin, .minYMargin, .maxYMargin]
 opacityValLabel.frame = CGRect(x: pctX(78), y: pctY(26), width: 36, height: fontSize(14))
 view.addSubview(opacityValLabel)
 
@@ -90,14 +90,14 @@ view.addSubview(opacityValLabel)
 let pauseBtn = NSButton(title: "⏸ 暂停", target: nil, action: nil)
 pauseBtn.bezelStyle = .rounded
 pauseBtn.font = NSFont.systemFont(ofSize: fontSize(12))
-pauseBtn.autoresizingMask = [.maxXMargin, .minYMargin]
+pauseBtn.autoresizingMask = [.maxXMargin, .minYMargin, .maxYMargin]
 pauseBtn.frame = CGRect(x: pctX(10), y: pctY(6), width: pctX(37), height: pctY(13))
 view.addSubview(pauseBtn)
 
 let cancelBtn = NSButton(title: "✕ 取消", target: nil, action: nil)
 cancelBtn.bezelStyle = .rounded
 cancelBtn.font = NSFont.systemFont(ofSize: fontSize(12))
-cancelBtn.autoresizingMask = [.minXMargin, .minYMargin]
+cancelBtn.autoresizingMask = [.minXMargin, .minYMargin, .maxYMargin]
 cancelBtn.frame = CGRect(x: pctX(53), y: pctY(6), width: pctX(37), height: pctY(13))
 view.addSubview(cancelBtn)
 
