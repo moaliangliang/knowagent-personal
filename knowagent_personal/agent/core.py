@@ -19,6 +19,7 @@ from typing import Any
 from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
 from knowagent_personal.harness.integration import install_harness
 from knowagent_personal.harness.self_improvement import SelfImprovementLoop
+from knowagent_personal.harness.skill_context import SkillContext, SkillUsageTracker
 
 SYSTEM_PROMPT = """你是 Mac Agent Personal，一个本地运行的 Mac 桌面 AI 助手。
 你有 70 多个本地命令可以控制 Mac 系统，包括：
@@ -92,8 +93,10 @@ class Agent:
         db_path = config.get("storage.db_path", "~/.knowagent/personal.db")
         if db_path:
             self._harness.context.memory.load_from_db(db_path)
-        # 自改进循环
+        # 自改进循环 + 技能上下文
         self._improve = SelfImprovementLoop()
+        self._skill_ctx = SkillContext()
+        self._skill_usage = SkillUsageTracker()
         # 发送 session.start 事件
         self._harness.events.emit("session.start")
         # ───────────────────────────────────────────────────
@@ -295,22 +298,39 @@ class Agent:
 
     def _build_messages(self) -> list[dict]:
         """Build message array with system prompt + conversation history."""
+        # 技能上下文注入
+        skill_section = self._skill_ctx.build_prompt_section() if hasattr(self, '_skill_ctx') else ""
+        effective_system_prompt = SYSTEM_PROMPT + skill_section
+
         # 如果 Harness 的 ContextManager 可用，用它组装
         harness = getattr(self, '_harness', None)
         if harness and harness.context:
-            return harness.context.build_messages()
+            # 注入技能上下文到系统提示
+            messages = harness.context.build_messages()
+            if skill_section and messages:
+                messages[0]["content"] += skill_section
+            return messages
 
         # Fallback: 直接拼接（无 harness 时）
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": effective_system_prompt}]
         messages.extend(self.conversation_history[-40:])
         return messages
 
     def harness_status(self) -> dict:
-        """查看 Harness 层状态。"""
+        """查看 Harness 层状态 + 自改进状态。"""
         harness = getattr(self, '_harness', None)
-        if not harness:
-            return {"harness": "未注入"}
-        return harness.status_report()
+        status = {"harness": "未注入"} if not harness else harness.status_report()
+        status["self_improvement"] = {
+            "total_turns": self._improve.recorder.total_turns if hasattr(self, '_improve') else 0,
+            "auto_skills": self._skill_ctx.count if hasattr(self, '_skill_ctx') else 0,
+            "reviews_done": self._improve.inspector._review_count if hasattr(self, '_improve') else 0,
+        }
+        if hasattr(self, '_skill_usage'):
+            top = self._skill_usage.top_skills(3)
+            status["self_improvement"]["top_skills"] = [
+                {"name": n, "uses": s["use_count"]} for n, s in top
+            ]
+        return status
 
     def compact_context(self):
         """手动触发上下文压缩。"""
