@@ -90,14 +90,14 @@ view.addSubview(opacityValLabel)
 let pauseBtn = NSButton(title: "⏸ 暂停", target: nil, action: nil)
 pauseBtn.bezelStyle = .rounded
 pauseBtn.font = NSFont.systemFont(ofSize: fontSize(12))
-pauseBtn.autoresizingMask = [.maxXMargin, .minYMargin, .maxYMargin]
+pauseBtn.autoresizingMask = [.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 pauseBtn.frame = CGRect(x: pctX(10), y: pctY(6), width: pctX(37), height: pctY(13))
 view.addSubview(pauseBtn)
 
 let cancelBtn = NSButton(title: "✕ 取消", target: nil, action: nil)
 cancelBtn.bezelStyle = .rounded
 cancelBtn.font = NSFont.systemFont(ofSize: fontSize(12))
-cancelBtn.autoresizingMask = [.minXMargin, .minYMargin, .maxYMargin]
+cancelBtn.autoresizingMask = [.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 cancelBtn.frame = CGRect(x: pctX(53), y: pctY(6), width: pctX(37), height: pctY(13))
 view.addSubview(cancelBtn)
 
