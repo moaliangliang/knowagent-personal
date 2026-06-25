@@ -7,6 +7,7 @@ import Cocoa
 
 let minutes: Int = Int(CommandLine.arguments.dropFirst().first ?? "25") ?? 25
 let titleArg: String = CommandLine.arguments.dropFirst().dropFirst().first ?? "番茄钟"
+let savedOpacity: CGFloat = CGFloat(Double(CommandLine.arguments.dropFirst().dropFirst().dropFirst().first ?? "0.5") ?? 0.5)
 
 let defaultW: CGFloat = 320
 let defaultH: CGFloat = 220
@@ -63,7 +64,7 @@ statusLabel.frame = CGRect(x: 0, y: view.bounds.height * 0.36, width: view.bound
 view.addSubview(statusLabel)
 
 // ── 透明度滑块 ──
-let opacityVal: CGFloat = 0.5  // 默认 50%
+let opacityVal: CGFloat = savedOpacity
 let opacityLabel = NSTextField(labelWithString: "不透明度")
 opacityLabel.font = NSFont.systemFont(ofSize: fontSize(10))
 opacityLabel.textColor = NSColor.gray
@@ -72,13 +73,13 @@ opacityLabel.autoresizingMask = [.maxXMargin, .minYMargin, .maxYMargin]
 opacityLabel.frame = CGRect(x: pctX(6), y: pctY(26), width: 55, height: fontSize(14))
 view.addSubview(opacityLabel)
 
-let opacitySlider = NSSlider(value: Double(opacityVal), minValue: 0.2, maxValue: 1.0, target: nil, action: nil)
+let opacitySlider = NSSlider(value: Double(savedOpacity), minValue: 0.2, maxValue: 1.0, target: nil, action: nil)
 opacitySlider.frame = CGRect(x: pctX(22), y: pctY(25), width: pctX(54), height: 20)
 opacitySlider.isContinuous = true
 opacitySlider.autoresizingMask = [NSView.AutoresizingMask.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 view.addSubview(opacitySlider)
 
-let opacityValLabel = NSTextField(labelWithString: "50%")
+let opacityValLabel = NSTextField(labelWithString: "\(Int(savedOpacity * 100))%")
 opacityValLabel.font = NSFont.monospacedDigitSystemFont(ofSize: fontSize(10), weight: .regular)
 opacityValLabel.textColor = NSColor.gray
 opacityValLabel.isBezeled = false; opacityValLabel.isEditable = false; opacityValLabel.backgroundColor = .clear
@@ -102,8 +103,8 @@ cancelBtn.frame = CGRect(x: pctX(53), y: pctY(6), width: pctX(37), height: pctY(
 view.addSubview(cancelBtn)
 
 // 默认透明度
-view.layer?.backgroundColor = CGColor(red: 0.173, green: 0.173, blue: 0.173, alpha: opacityVal)
-window.alphaValue = opacityVal
+view.layer?.backgroundColor = CGColor(red: 0.173, green: 0.173, blue: 0.173, alpha: savedOpacity)
+window.alphaValue = savedOpacity
 
 // ── 辅助函数 ──
 func notify(_ text: String) {
@@ -147,6 +148,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         view.layer?.backgroundColor = CGColor(red: 0.173, green: 0.173, blue: 0.173, alpha: alpha)
         window.alphaValue = alpha
         opacityValLabel.stringValue = "\(Int(alpha * 100))%"
+        // 记住透明度设置
+        let cfgPath = NSHomeDirectory() + "/.knowagent/timer_config.json"
+        let cfg = "{\"opacity\":\(Double(alpha))}"
+        try? FileManager.default.createDirectory(atPath: NSHomeDirectory() + "/.knowagent", withIntermediateDirectories: true)
+        try? cfg.write(toFile: cfgPath, atomically: true, encoding: .utf8)
     }
 
     @objc func tick() {

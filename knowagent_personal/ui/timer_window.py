@@ -33,12 +33,24 @@ def _ensure_binary() -> str | None:
         return None
 
 
+def _load_opacity() -> float:
+    """读取上次保存的透明度。"""
+    import json
+    cfg = os.path.expanduser("~/.knowagent/timer_config.json")
+    try:
+        with open(cfg) as f:
+            return float(json.load(f).get("opacity", 0.5))
+    except Exception:
+        return 0.5
+
+
 def start_timer(minutes: int = 25, name: str = "番茄钟") -> str:
-    """启动番茄钟。"""
+    """启动番茄钟（记住上次透明度）。"""
     binary = _ensure_binary()
     if binary:
+        opacity = _load_opacity()
         subprocess.Popen(
-            [binary, str(minutes), name],
+            [binary, str(minutes), name, str(opacity)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
