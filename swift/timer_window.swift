@@ -54,7 +54,7 @@ timerLabel.frame = CGRect(x: 0, y: view.bounds.height * 0.48, width: view.bounds
 view.addSubview(timerLabel)
 
 // ── 状态文字 ──
-let statusLabel = NSTextField(labelWithString: titleArg)
+let statusLabel = NSTextField(labelWithString: "保持专注")
 statusLabel.font = NSFont.systemFont(ofSize: fontSize(13))
 statusLabel.alignment = .center
 statusLabel.textColor = NSColor.gray
@@ -176,7 +176,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func togglePause() {
         paused.toggle()
         pauseBtn.title = paused ? "▶ 继续" : "⏸ 暂停"
-        statusLabel.stringValue = paused ? "⏸ 已暂停 (\(titleArg))" : titleArg
+        statusLabel.stringValue = paused ? "⏸ 已暂停" : "保持专注"
         statusLabel.textColor = paused ? NSColor.orange : NSColor.gray
         timerLabel.textColor = paused ? NSColor.orange :
             NSColor(red: 0.902, green: 0.494, blue: 0.133, alpha: 1.0)
