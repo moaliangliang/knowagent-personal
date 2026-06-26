@@ -625,6 +625,126 @@ def _play_from_local_library(track_name: str, artist_name: str) -> str | None:
         return None
 
 
+# ── Music App 播放按钮缓存 ──────────────────────────────
+# 首次通过截图识别找到播放按钮位置后缓存，后续直接点击
+_MUSIC_BTN_CACHE: dict | None = None
+_MUSIC_BTN_CACHE_FILE = os.path.expanduser("~/.zhixing/music_btn.json")
+
+
+def _load_music_btn_cache() -> dict | None:
+    """加载缓存的播放按钮位置"""
+    try:
+        if os.path.exists(_MUSIC_BTN_CACHE_FILE):
+            with open(_MUSIC_BTN_CACHE_FILE) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+
+def _save_music_btn_cache(pos: dict):
+    """保存播放按钮位置到缓存"""
+    try:
+        os.makedirs(os.path.dirname(_MUSIC_BTN_CACHE_FILE), exist_ok=True)
+        with open(_MUSIC_BTN_CACHE_FILE, "w") as f:
+            json.dump(pos, f)
+    except Exception:
+        pass
+
+
+def _detect_play_button() -> tuple[int, int] | None:
+    """截图识别 Music App 窗口中的播放按钮位置"""
+    try:
+        # 1. 确保 Music 在前台
+        subprocess.run(["osascript", "-e",
+            'tell application "System Events" to tell process "Music" to set frontmost to true'],
+            capture_output=True, timeout=5)
+        subprocess.run(["osascript", "-e",
+            'tell application "Music" to activate'],
+            capture_output=True, timeout=5)
+        import time as _t
+        _t.sleep(1)
+
+        # 2. 截取最前窗口
+        tmp = "/tmp/zhixing_music_btn.png"
+        subprocess.run(["screencapture", "-o", "-w", tmp],
+                       capture_output=True, timeout=10)
+        if not os.path.exists(tmp):
+            return None
+
+        # 3. OCR 识别
+        binary = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))),
+            "..", "..", "swift", "screen_ocr")
+        if not os.path.exists(binary):
+            binary = os.path.expanduser("~/.zhixing/bin/screen_ocr")
+        if not os.path.exists(binary):
+            return None
+
+        r = subprocess.run([binary, tmp, "--json"],
+                           capture_output=True, text=True, timeout=30)
+        os.remove(tmp)
+        if r.returncode != 0 or not r.stdout.strip():
+            return None
+
+        data = json.loads(r.stdout)
+        blocks = data.get("blocks", [])
+
+        # 4. 找"播放"按钮（优先匹配主按钮区域）
+        targets = ["播放", "Play"]
+        candidates = []
+        for b in blocks:
+            for t in targets:
+                if t.lower() in b.get("text", "").lower():
+                    cx = b["x"] + b.get("w", 80) // 2
+                    cy = b["y"] + b.get("h", 30) // 2
+                    candidates.append((cx, cy, b["y"]))
+
+        if not candidates:
+            # 找"随机播放"按钮（也是播放的一种）
+            for b in blocks:
+                if "随机" in b.get("text", "") or "Shuffle" in b.get("text", ""):
+                    cx = b["x"] + b.get("w", 80) // 2
+                    cy = b["y"] + b.get("h", 30) // 2
+                    candidates.append((cx, cy, b["y"]))
+
+        if candidates:
+            # 取最靠上的播放按钮（主按钮通常在顶部）
+            candidates.sort(key=lambda x: x[2])
+            return (candidates[0][0], candidates[0][1])
+
+    except Exception:
+        pass
+    return None
+
+
+def _click_music_play():
+    """点击 Music App 的播放按钮（缓存优先，自动检测降级）"""
+    global _MUSIC_BTN_CACHE
+
+    # 1. 尝试缓存
+    pos = _MUSIC_BTN_CACHE or _load_music_btn_cache()
+
+    # 2. 无缓存则自动检测
+    if not pos:
+        detected = _detect_play_button()
+        if detected:
+            pos = {"x": detected[0], "y": detected[1]}
+            _MUSIC_BTN_CACHE = pos
+            _save_music_btn_cache(pos)
+
+    # 3. 点击
+    if pos:
+        try:
+            subprocess.run(
+                ["cliclick", f"c:{pos['x']},{pos['y']}"],
+                capture_output=True, timeout=5)
+            return True
+        except Exception:
+            pass
+    return False
+
+
 def _open_in_music_app(track_url: str):
     """在 Music App 中打开歌曲页面"""
     try:
@@ -875,7 +995,33 @@ def cmd_music_search_online(params: dict) -> str:
     if "正在完整播放" in yt_result:
         return yt_result
 
-    # ── 4. 最终：在 Music App 中打开（用户手动点播放） ──
+    # ── 4. Apple Music 截图识别播放 ──
+    if first_result and shutil.which("cliclick"):
+        track_url = first_result.get("trackViewUrl", "")
+        if track_url:
+            _open_in_music_app(track_url)
+            import time as _t
+            _t.sleep(2)
+            clicked = _click_music_play()
+            _t.sleep(2)
+            # 验证是否开始播放
+            playing = False
+            try:
+                r = subprocess.run(["osascript", "-e",
+                    'tell application "Music" to if player state is playing then return "yes"'],
+                    capture_output=True, text=True, timeout=5)
+                playing = "yes" in r.stdout.strip()
+            except Exception:
+                pass
+            if playing:
+                return (
+                    f"🎵 正在播放: {track_name} — {artist_name}\n"
+                    f"💿 来源: Apple Music\n"
+                    f"热门结果:\n{songs_str}\n"
+                    "\x1b[2m输入 music_stop 停止播放\x1b[0m"
+                )
+
+    # ── 5. 最终：在 Music App 中打开（提示用户） ──
     if first_result:
         track_url = first_result.get("trackViewUrl", "")
         if track_url:
