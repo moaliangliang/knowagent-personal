@@ -169,6 +169,10 @@ document.querySelectorAll(".tab").forEach((tab) => {
 
 // ── 命令执行（IPC 直连主进程） ──────────────────
 
+function stripAnsi(str) {
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 async function runCommand(cmd) {
   try {
     const result = await window.ka.runCommand(cmd);
@@ -268,10 +272,11 @@ async function sendMessage() {
   const result = await runCommand(text);
   const wait = document.querySelector(".msg-wait");
   if (wait) wait.remove();
+  const output = stripAnsi(result.data || "");
   if (result.success) {
-    addMsg(result.data, "bot");
+    addMsg(output, "bot");
   } else {
-    addMsg(result.data, "bot");
+    addMsg(output, "bot");
   }
   sendBtn.disabled = false;
 
