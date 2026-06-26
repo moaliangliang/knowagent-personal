@@ -217,7 +217,18 @@ function addMsg(text, type) {
     });
     wrap.appendChild(opts);
   } else {
-    d.textContent = text;
+    // 帮助输出：模块标题（以 🔧💬🌐 等 emoji 开头）自动加粗
+    if (type === "bot" && /[🔧💬🌐📁💻🎬📅🤖📊🎵⌨️🔐📋⚡🔌🛡️]/.test(text)) {
+      d.innerHTML = text.split("\n").map(line => {
+        const esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        if (/^\s*[🔧💬🌐📁💻🎬📅🤖📊🎵⌨️🔐📋⚡🔌🛡️]/.test(line)) {
+          return `<b>${esc}</b>`;
+        }
+        return esc;
+      }).join("\n");
+    } else {
+      d.textContent = text;
+    }
     wrap.appendChild(d);
 
     // 复制按钮
