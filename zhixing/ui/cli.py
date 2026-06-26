@@ -112,7 +112,7 @@ NL_RULES = [
         ("ocr_pro", {"action": "vision_batch", "path": kw or "~"})
     ) if kw else ("ocr_pro", {"action": "vision_batch", "path": "~"})),
     (["ui", "界面", "元素", "tree", "树"], lambda kw: ("ui_tree", {"app": kw}) if kw and not any(x in kw for x in ["点击","点一下","按"]) else ("ui_click", {"desc": kw}) if kw else ("help", {})),
-    (["帮助", "help", "h", "?"], lambda _: ("help", {})),
+    (["帮助", "help", "h", "?", "命令", "commands", "命令列表", "有什么命令", "所有命令", "能做什么"], lambda _: ("help", {})),
     (["输入", "打字", "key", "type"], lambda kw: ("keyboard_type", {"text": kw})),
     (["按", "press", "快捷键"], lambda kw: ("keyboard_press", {"key": kw})),
     (["通知", "提醒", "notify"], lambda kw: ("notification", {"text": kw}) if kw else ("notification", {"text": "Hello from ZhiXing!"})),
@@ -189,7 +189,7 @@ def parse_natural(text: str):
     # NL 规则优先匹配：仅对含特定关键词的文本生效
     # 必须在别名之前，防止别名"打开"/"删除"等通用词拦截
     import re as _re
-    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo)', text, re.I):
+    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo|帮助|help|命令|能力|功能|commands|list)', text, re.I):
         nl_result = _match_nl_rules(text)
         if nl_result:
             return nl_result
