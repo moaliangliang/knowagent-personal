@@ -23,6 +23,7 @@ guard args.count >= 2 else {
 let imagePath = args[1]
 var regionRect: CGRect?
 var fastMode = false
+var jsonMode = false
 
 var i = 2
 while i < args.count {
@@ -35,6 +36,8 @@ while i < args.count {
         }
     case "--fast":
         fastMode = true
+    case "--json":
+        jsonMode = true
     default:
         break
     }
@@ -140,6 +143,35 @@ func runOCR() {
     // 输出
     let totalPixels = sourceImage.width * sourceImage.height
     let sizeKB = Double(totalPixels * 4) / 1024.0 / 1024.0
+
+    if jsonMode {
+        // JSON 输出模式（带坐标）
+        var jsonBlocks: [[String: Any]] = []
+        for line in sortedLines {
+            for block in line {
+                let stripped = block.text.trimmingCharacters(in: .whitespaces)
+                if !stripped.isEmpty {
+                    jsonBlocks.append([
+                        "text": block.text,
+                        "x": block.x,
+                        "y": block.y,
+                    ])
+                }
+            }
+        }
+        let jsonObj: [String: Any] = [
+            "width": sourceImage.width,
+            "height": sourceImage.height,
+            "blocks": jsonBlocks,
+            "total": observations.count,
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObj, options: []),
+           let jsonStr = String(data: jsonData, encoding: .utf8) {
+            print(jsonStr)
+        }
+        return
+    }
+
     print("📸 截屏已分析 (\(sourceImage.width)x\(sourceImage.height))")
     print("🔤 OCR 识别到 \(observations.count) 个文字块，\(sortedLines.count) 行:")
 

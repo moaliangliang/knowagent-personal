@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知行 ZhiXing</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 标题栏 -->
+    <div id="titlebar">
+      <span id="title-text">🤖 知行</span>
+      <div id="titlebar-btns">
+        <button class="tb-btn" id="btn-hide" title="Minimize">─</button>
+        <button class="tb-btn" id="btn-close" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- 连接状态 -->
+    <div id="status-bar"><span id="status-text" class="off">○ <span id="s-disconnected">Disconnected</span></span></div>
+
+    <!-- 标签页 -->
+    <div id="tabs">
+      <div class="tab" data-tab="workflow">⚡ <span id="s-workflow">Workflow</span></div>
+      <div class="tab active" data-tab="chat">💬 <span id="s-chat">Chat</span></div>
+      <div class="tab" data-tab="todo">📋 <span id="s-tasks">Tasks</span></div>
+    </div>
+
+    <!-- 对话区 -->
+    <div id="msgs"></div>
+    <div id="todo-panel"></div>
+    <div id="wf-panel"></div>
+
+    <!-- 输入区 -->
+    <div id="input-wrap">
+      <div id="suggestions"></div>
+      <div id="input-area">
+        <input id="input-box" placeholder="Type a command..." autocomplete="off">
+        <button id="send-btn">➤</button>
+      </div>
+    </div>
+
+    <!-- 底部栏 -->
+    <div id="footer-bar">
+      <span id="help-btn">💡 <span id="s-help">Type help for commands</span></span>
+      <span id="clear-btn">🗑️ <span id="s-clear">Clear</span></span>
+    </div>
+  </div>
+  <script src="app.js"></script>
+  <script src="workflow.js"></script>
+</body>
+</html>

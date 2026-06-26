@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
+from zhixing.agent.tools import COMMANDS, get_tool_definitions
 
 
 def test_commands_exist():

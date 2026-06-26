@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from knowagent_personal.agent.tools import COMMANDS
+from zhixing.agent.tools import COMMANDS
 
 
 # ── system_tools ──────────────────────────────────────────────
@@ -155,7 +155,7 @@ def test_clipboard_daemon_commands():
 def test_cn_aliases():
     """All Chinese aliases resolve to valid registered commands.
     'help' is excluded because it is not a tool command but a UI handler."""
-    from knowagent_personal.agent.aliases import CN_ALIASES
+    from zhixing.agent.aliases import CN_ALIASES
     for cn_alias, en_command in CN_ALIASES.items():
         if en_command == "help":
             continue  # help is a UI handler, not a COMMANDS entry
@@ -169,7 +169,7 @@ def test_cn_aliases():
 
 def test_help_text_categories():
     """All help text categories reference valid registered commands."""
-    from knowagent_personal.agent.help_text import HELP_EN, HELP_ZH
+    from zhixing.agent.help_text import HELP_EN, HELP_ZH
 
     for lang_name, help_dict in [("EN", HELP_EN), ("ZH", HELP_ZH)]:
         categories = help_dict.get("ex_categories", {})
@@ -187,7 +187,7 @@ def test_help_text_categories():
 
 def test_vpn_module():
     """VpnClient can be instantiated."""
-    from knowagent_personal.agent.vpn import VpnClient
+    from zhixing.agent.vpn import VpnClient
     client = VpnClient()
     assert client is not None
     # Verify expected attributes exist
@@ -203,7 +203,7 @@ def test_vpn_module():
 
 def test_keychain_module():
     """Keychain module can be imported and has expected functions."""
-    from knowagent_personal.agent.keychain import (
+    from zhixing.agent.keychain import (
         keychain_set,
         keychain_get,
         keychain_delete,

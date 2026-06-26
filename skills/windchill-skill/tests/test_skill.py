@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from knowagent_personal.plugins import auto_register_skill
+from zhixing.plugins import auto_register_skill
 
 
 def test_skill_import():

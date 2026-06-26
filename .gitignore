@@ -11,10 +11,8 @@ swift/screen_ocr
 swift/menubar
 swift/hotkey
 swift/timer_window
-~/.knowagent/bin/
-
-# Local state
-.knowagent/
+~/.zhixing/bin/
+.zhixing/
 
 # OS
 .DS_Store

@@ -1,16 +1,16 @@
 #!/bin/bash
-# Mac Agent Personal - 菜单栏应用管理
+# 知行 (ZhiXing) - 菜单栏应用管理
 # 用法: bash scripts/menubar.sh {start|stop|status|restart}
 
-APP_PATH="$HOME/.knowagent/MacAgent.app"
-PID_FILE="/tmp/knowagent-menubar.pid"
-LOG_FILE="/tmp/knowagent-menubar.log"
+APP_PATH="$HOME/.zhixing/ZhiXing.app"
+PID_FILE="/tmp/zhixing-menubar.pid"
+LOG_FILE="/tmp/zhixing-menubar.log"
 
 ensure_app() {
     if [ ! -d "$APP_PATH" ]; then
-        echo "📦 创建 MacAgent.app..."
+        echo "📦 创建 ZhiXing.app..."
         osacompile -o "$APP_PATH" \
-            -e "do shell script \"cd $(pwd) && python3 -m knowagent_personal.app menubar > $LOG_FILE 2>&1 &\"" 2>/dev/null
+            -e "do shell script \"cd $(pwd) && python3 -m zhixing.app menubar > $LOG_FILE 2>&1 &\"" 2>/dev/null
         if [ $? -ne 0 ]; then
             echo "❌ 创建失败"
             return 1
@@ -28,14 +28,13 @@ case "${1:-start}" in
             echo "   重新启动: $0 restart"
             exit 0
         fi
-        # Launch via open (runs on main thread - required for NSStatusBar)
         open "$APP_PATH"
-        PID=$(ps aux | grep "knowagent.*menubar" | grep -v grep | awk '{print $2}')
+        PID=$(ps aux | grep "zhixing.*menubar" | grep -v grep | awk '{print $2}')
         if [ -n "$PID" ]; then
             echo "$PID" > "$PID_FILE"
         fi
         echo "✅ 菜单栏已启动"
-        echo "   点击菜单栏 KA 图标使用"
+        echo "   点击菜单栏图标使用"
         echo "   关闭: $0 stop"
         ;;
     stop)
@@ -44,7 +43,7 @@ case "${1:-start}" in
             rm -f "$PID_FILE"
             echo "⏹  菜单栏已关闭"
         else
-            PID=$(ps aux | grep "knowagent.*menubar" | grep -v grep | awk '{print $2}')
+            PID=$(ps aux | grep "zhixing.*menubar" | grep -v grep | awk '{print $2}')
             if [ -n "$PID" ]; then
                 kill "$PID" 2>/dev/null
                 echo "⏹  菜单栏已关闭 (PID $PID)"
@@ -54,7 +53,7 @@ case "${1:-start}" in
         fi
         ;;
     status)
-        PID=$(ps aux | grep "knowagent.*menubar" | grep -v grep | awk '{print $2}')
+        PID=$(ps aux | grep "zhixing.*menubar" | grep -v grep | awk '{print $2}')
         if [ -n "$PID" ]; then
             echo "✅ 菜单栏运行中 (PID $PID)"
         else

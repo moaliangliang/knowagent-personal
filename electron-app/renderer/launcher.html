@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZhiXing Launcher</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: transparent;
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+#app {
+  width: 520px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  overflow: hidden;
+  animation: fadeIn .12s ease-out;
+}
+@keyframes fadeIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+#input-box {
+  width: 100%;
+  border: none;
+  padding: 14px 18px;
+  font-size: 18px;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+}
+#input-box::placeholder { color: #bbb; }
+#results {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.result-item {
+  padding: 10px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #333;
+  transition: background .1s;
+}
+.result-item:hover { background: #f0f4ff; }
+.result-item.active { background: #667eea; color: #fff; }
+.result-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.result-name { flex: 1; }
+.result-desc { color: #999; font-size: 12px; }
+.result-item.active .result-desc { color: rgba(255,255,255,0.7); }
+#status-bar {
+  padding: 6px 18px;
+  font-size: 11px;
+  color: #999;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+}
+.online { color: #22c55e; }
+.offline { color: #ef4444; }
+</style>
+</head>
+<body>
+<div id="app">
+  <input id="input-box" placeholder="搜索命令或输入操作..." autofocus>
+  <div id="results"></div>
+  <div id="status-bar">
+    <span id="status-text"><span class="offline">○</span> 连接中...</span>
+    <span id="cmd-count"></span>
+  </div>
+</div>
+<script>
+const API = "http://localhost:9511";
+const $ = id => document.getElementById(id);
+const input = $("input-box");
+const results = $("results");
+let allCmds = [];
+let selectedIdx = -1;
+
+// 连接检测
+fetch(API, { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({action:"ping"}) })
+  .then(r => r.json())
+  .then(d => {
+    if (d.type === "pong") {
+      $("status-text").innerHTML = '<span class="online">●</span> 已连接';
+      if (d.cmds) $("cmd-count").textContent = d.cmds + " 命令";
+    }
+  })
+  .catch(() => {
+    $("status-text").innerHTML = '<span class="offline">○</span> 未连接';
+  });
+
+// 发送命令
+async function execCmd(text) {
+  try {
+    const resp = await fetch(API, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action:"command", params:{cmd: text}}),
+    });
+    const data = await resp.json();
+    return data.data || "(空)";
+  } catch(e) {
+    return "❌ 连接失败";
+  }
+}
+
+// 输入处理
+input.oninput = async () => {
+  const text = input.value.trim();
+  selectedIdx = -1;
+
+  if (!text) {
+    results.innerHTML = '<div style="padding:20px;text-align:center;color:#ccc;font-size:13px;">输入命令或操作</div>';
+    return;
+  }
+
+  // 显示加载
+  results.innerHTML = '<div style="padding:20px;text-align:center;color:#ccc;">⏳ 搜索中...</div>';
+
+  try {
+    const resp = await fetch(API, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action:"suggest", params:{cmd: text}}),
+    });
+    const data = await resp.json();
+    let items = [];
+    if (data.type === "suggestions" && data.data) {
+      items = data.data.slice(0, 8).map(s => ({ label: s, type: "cmd" }));
+    }
+
+    // 添加操作入口
+    const actionItems = [
+      { label: text, type: "action" },
+    ];
+    if (text.startsWith("帮我") || text.startsWith("搜索")) {
+      items = [];
+    }
+    items = [...actionItems, ...items];
+
+    if (items.length === 0) {
+      results.innerHTML = '<div style="padding:20px;text-align:center;color:#ccc;font-size:13px;">无匹配命令</div>';
+      return;
+    }
+
+    results.innerHTML = items.map((item, i) => `
+      <div class="result-item ${i === 0 ? 'active' : ''}" data-idx="${i}">
+        <span class="result-icon" style="background:${item.type === 'action' ? '#667eea' : '#f0f4ff'}">
+          ${item.type === 'action' ? '▶' : '⚡'}
+        </span>
+        <span class="result-name">${item.label}</span>
+        <span class="result-desc">${item.type === 'action' ? '回车执行' : '命令'}</span>
+      </div>
+    `).join("");
+
+    selectedIdx = 0;
+    results.querySelectorAll(".result-item").forEach(el => {
+      el.onclick = async () => {
+        const idx = parseInt(el.dataset.idx);
+        const item = items[idx];
+        const result = await execCmd(item.label);
+        window.electronAPI?.showResult(result);
+      };
+    });
+  } catch(e) {
+    results.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">❌ 连接失败</div>';
+  }
+};
+
+// 键盘事件
+input.onkeydown = async (e) => {
+  const items = results.querySelectorAll(".result-item");
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle("active", i === selectedIdx));
+    if (items[selectedIdx]) items[selectedIdx].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    selectedIdx = Math.max(selectedIdx - 1, 0);
+    items.forEach((el, i) => el.classList.toggle("active", i === selectedIdx));
+    if (items[selectedIdx]) items[selectedIdx].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    const active = results.querySelector(".result-item.active");
+    if (active) {
+      const text = active.querySelector(".result-name").textContent;
+      const result = await execCmd(text);
+      window.electronAPI?.showResult(result);
+    } else if (input.value.trim()) {
+      const result = await execCmd(input.value.trim());
+      window.electronAPI?.showResult(result);
+    }
+  } else if (e.key === "Escape") {
+    window.electronAPI?.hideWindow();
+  }
+};
+</script>
+</body>
+</html>

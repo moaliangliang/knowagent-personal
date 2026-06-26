@@ -49,8 +49,8 @@ Agent (LLM Loop)
 
 ```bash
 # 克隆仓库
-git clone https://github.com/knowagent/knowagent-personal.git
-cd knowagent-personal
+git clone https://github.com/knowagent/zhixing.git
+cd zhixing
 
 # 安装开发依赖
 pip install -e ".[openai,voice,menubar]"
@@ -84,7 +84,7 @@ python -m tests.test_integration
 在 `agent/*_tools.py` 或新文件中：
 
 ```python
-from knowagent_personal.harness.registry import register_tool, ToolCategory, PermissionLevel
+from zhixing.harness.registry import register_tool, ToolCategory, PermissionLevel
 
 @register_tool(
     "my_command",
@@ -177,7 +177,7 @@ session.start    session.end
 继承 `harness/gateway.py` 的 `PlatformAdapter` 基类：
 
 ```python
-from knowagent_personal.harness.gateway import PlatformAdapter, AgentMessage, AgentResponse
+from zhixing.harness.gateway import PlatformAdapter, AgentMessage, AgentResponse
 
 class TelegramAdapter(PlatformAdapter):
     """Telegram 平台适配器。"""
@@ -232,7 +232,7 @@ python -m tests.test_integration
 ### 编写 Harness 测试模板
 
 ```python
-from knowagent_personal.harness.registry import TOOL_REGISTRY, register_tool, ToolCategory, PermissionLevel
+from zhixing.harness.registry import TOOL_REGISTRY, register_tool, ToolCategory, PermissionLevel
 
 def test_my_feature():
     # 1. 注册测试工具
@@ -288,17 +288,17 @@ scope: harness | agent | ui | config | docs | ...
 
 ## 报告 Bug
 
-在 [Issues](https://github.com/knowagent/knowagent-personal/issues) 中提交，请包含：
+在 [Issues](https://github.com/knowagent/zhixing/issues) 中提交，请包含：
 
 - macOS 版本
 - Python 版本
 - 完整的错误输出（不要截图，粘贴文字）
-- 是否有 Harness 权限拦截（检查 `~/.knowagent/logs/audit_*.jsonl`）
+- 是否有 Harness 权限拦截（检查 `~/.zhixing/logs/audit_*.jsonl`）
 - 复现步骤
 
 ## 提交功能请求
 
-在 [Issues](https://github.com/knowagent/knowagent-personal/issues) 中提交，请描述：
+在 [Issues](https://github.com/knowagent/zhixing/issues) 中提交，请描述：
 
 - 你想要什么功能
 - 为什么需要它（使用场景）

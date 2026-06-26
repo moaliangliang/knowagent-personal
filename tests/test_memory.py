@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from knowagent_personal.memory.db import (
+from zhixing.memory.db import (
     init_db,
     save_message,
     get_recent_messages,
@@ -48,7 +48,7 @@ def test_clear_history():
 
 def test_document_index_table():
     """Verify the document_index table was created by init_db."""
-    from knowagent_personal.memory.db import get_db_path
+    from zhixing.memory.db import get_db_path
     import sqlite3
     conn = sqlite3.connect(get_db_path())
     tables = conn.execute(

@@ -4,7 +4,7 @@
 mode: bridge  # bridge | direct
 
 # Bridge 模式：个人版通过后端 HTTP 代理
-# 确认后端 KnowAgent 已启动，且 /api/agent/windchill 可用
+# 确认后端 ZhiXing 已启动，且 /api/agent/windchill 可用
 bridge:
   url: http://localhost:8000
 

@@ -1,0 +1,375 @@
+/* 知行 ZhiXing Desktop 样式 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  border-radius: 16px;
+}
+
+#app {
+  width: 420px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+/* ── 标题栏 ─────────────────────── */
+
+#titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+#title-text { font-weight: 600; font-size: 14px; }
+
+#titlebar-btns {
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.tb-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+
+.tb-btn:hover { background: rgba(255,255,255,0.3); }
+
+/* ── 状态栏 ─────────────────────── */
+
+#status-bar {
+  padding: 3px 14px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.on { color: #22c55e; }
+.off { color: #ef4444; }
+
+/* ── 标签页 ─────────────────────── */
+
+#tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 6px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+  color: #888;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+}
+
+.tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: #fff;
+  font-weight: 600;
+}
+
+.tab:hover { color: #667eea; }
+
+/* ── 消息区 ─────────────────────── */
+
+#msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background: #f5f6f8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msg {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.msg-user {
+  background: #667eea;
+  color: #fff;
+  align-self: flex-end;
+}
+
+.msg-bot {
+  background: #fff;
+  color: #333;
+  align-self: flex-start;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+
+.msg-wait {
+  background: #fff;
+  color: #999;
+  align-self: flex-start;
+  font-style: italic;
+}
+
+/* 交互按钮 */
+.opts { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+
+.opt-btn {
+  display: block;
+  padding: 7px 12px;
+  background: #f0f4ff;
+  color: #444;
+  border: 1px solid #e0e7ff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  transition: all .15s;
+}
+
+.opt-btn:hover {
+  background: #667eea;
+  color: #fff;
+  border-color: #667eea;
+}
+
+/* ── 待办面板 ───────────────────── */
+
+#todo-panel {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  padding: 8px 12px;
+  background: #f5f6f8;
+}
+
+#todo-panel.open { display: flex; }
+
+.todo-item {
+  padding: 6px 10px;
+  margin: 2px 0;
+  background: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.todo-done { opacity: .5; text-decoration: line-through; }
+.todo-high { border-left: 3px solid #ef4444; }
+.todo-med  { border-left: 3px solid #f59e0b; }
+.todo-low  { border-left: 3px solid #22c55e; }
+
+.todo-text { flex: 1; word-break: break-all; }
+.todo-btn { cursor: pointer; font-size: 14px; opacity: .4; transition: opacity .2s; }
+.todo-btn:hover { opacity: 1; }
+
+/* ── 输入区 ─────────────────────── */
+
+#input-wrap {
+  position: relative;
+  border-top: 1px solid #eee;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+#input-area {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+#input-box {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 18px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+#input-box:focus { border-color: #667eea; }
+
+#send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#send-btn:disabled { background: #ccc; cursor: default; }
+
+/* ── 底部栏 ─────────────────────── */
+
+#footer-bar {
+  display: flex;
+  border-top: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+#help-btn {
+  flex: 1;
+  padding: 6px 12px;
+  background: #f8f9fb;
+  font-size: 11px;
+  color: #667eea;
+  cursor: pointer;
+  text-align: center;
+}
+
+#clear-btn {
+  padding: 6px 12px;
+  background: #f8f9fb;
+  font-size: 11px;
+  color: #999;
+  cursor: pointer;
+  text-align: center;
+  border-left: 1px solid #eee;
+}
+
+#help-btn:hover, #clear-btn:hover { background: #f0f2f5; }
+
+/* ── 工作流编辑器 ──────────────────── */
+
+#wf-panel { display:none; flex-direction:column; flex:1; overflow:hidden; }
+#wf-panel.open { display:flex; }
+
+#wf-toolbar {
+  display:flex; gap:6px; padding:6px 8px; background:#fafafa;
+  border-bottom:1px solid #eee; align-items:center; flex-shrink:0;
+}
+.wf-btn {
+  padding:5px 12px; border:1px solid #ddd; border-radius:6px;
+  background:#fff; cursor:pointer; font-size:12px; color:#444;
+  transition:all .15s;
+}
+.wf-btn:hover { background:#f0f4ff; border-color:#667eea; color:#667eea; }
+.wf-btn-primary { background:#667eea; color:#fff; border-color:#667eea; }
+.wf-btn-primary:hover { background:#5a6fd6; }
+.wf-btn-sm { padding:4px 8px; font-size:11px; }
+
+#wf-body { display:flex; flex:1; overflow:hidden; }
+
+/* 步骤调色板 */
+#wf-palette {
+  width:100px; background:#fafafa; border-right:1px solid #eee;
+  overflow-y:auto; flex-shrink:0;
+}
+.wf-palette-item {
+  display:flex; align-items:center; gap:6px; padding:6px 8px;
+  cursor:grab; font-size:11px; color:#555; border-bottom:1px solid #f0f0f0;
+  transition:background .1s;
+}
+.wf-palette-item:hover { background:#eef2ff; }
+.wf-palette-icon {
+  width:20px; height:20px; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; flex-shrink:0;
+}
+
+/* 画布 */
+#wf-canvas {
+  flex:1; overflow-y:auto; padding:8px; background:#f5f6f8;
+  min-height:100px;
+}
+#wf-drop-hint {
+  text-align:center; color:#ccc; padding:30px; font-size:13px;
+}
+.wf-drop-zone {
+  text-align:center; padding:8px; color:#ccc; font-size:18px;
+  border:2px dashed #ddd; border-radius:8px; margin:4px 0;
+  cursor:pointer;
+}
+.wf-drop-zone:hover { border-color:#667eea; color:#667eea; }
+
+/* 步骤块 */
+.wf-step {
+  display:flex; align-items:center; gap:8px; padding:6px 8px;
+  margin:4px 0; background:#fff; border-radius:8px;
+  border:2px solid transparent; cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all .15s;
+}
+.wf-step:hover { box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.wf-step-active { border-color:#667eea; background:#f0f4ff; }
+.wf-step-running { border-color:#22c55e; }
+.wf-step-num {
+  width:20px; height:20px; border-radius:50%; background:#eee;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:#666; flex-shrink:0;
+}
+.wf-step-icon {
+  width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0;
+}
+.wf-step-body { flex:1; min-width:0; }
+.wf-step-title { font-size:12px; font-weight:600; color:#333; }
+.wf-step-preview { font-size:10px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wf-step-del {
+  width:20px; height:20px; border-radius:50%; border:none;
+  background:transparent; cursor:pointer; font-size:11px; color:#ccc;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.wf-step-del:hover { background:#fee2e2; color:#ef4444; }
+
+/* 配置面板 */
+#wf-config {
+  width:200px; background:#fafafa; border-left:1px solid #eee;
+  overflow-y:auto; flex-shrink:0; display:flex; flex-direction:column;
+}
+#wf-config-header {
+  padding:8px; font-size:11px; font-weight:600; color:#999;
+  border-bottom:1px solid #eee; flex-shrink:0;
+}
+#wf-config-body { padding:8px; flex:1; overflow-y:auto; font-size:12px; }
+.wf-field { margin:8px 0; }
+.wf-field label { display:block; font-size:11px; color:#666; margin-bottom:3px; }
+.wf-input {
+  width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:6px;
+  font-size:12px; outline:none; box-sizing:border-box;
+}
+.wf-input:focus { border-color:#667eea; }
+

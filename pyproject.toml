@@ -3,10 +3,10 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "knowagent-personal"
+name = "zhixing"
 version = "2.0.0"
-description = "Mac Agent Personal - Harness-driven Mac Desktop AI Assistant with 83 commands"
-authors = [{ name = "KnowAgent" }]
+description = "知行 (ZhiXing) / Flow - 自然语言驱动的 Mac 桌面 AI 自动化助手"
+authors = [{ name = "ZhiXing Team" }]
 license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
@@ -23,15 +23,16 @@ voice = ["SpeechRecognition>=3.10.0"]
 menubar = ["rumps>=0.4.0"]
 
 [project.scripts]
-ka = "knowagent_personal.main:main"
+zhi = "zhixing.main:main"
+flow = "zhixing.main:main"
 
 [project.urls]
-Homepage = "https://github.com/knowagent/knowagent-personal"
-Source = "https://github.com/knowagent/knowagent-personal"
-Issues = "https://github.com/knowagent/knowagent-personal/issues"
+Homepage = "https://github.com/zhixing-ai/zhixing"
+Source = "https://github.com/zhixing-ai/zhixing"
+Issues = "https://github.com/zhixing-ai/zhixing/issues"
 
 [tool.setuptools.packages.find]
-include = ["knowagent_personal*", "knowagent_personal.plugins*"]
+include = ["zhixing*", "zhixing.plugins*"]
 
 [tool.setuptools.package-data]
-knowagent_personal = ["py.typed", "harness/default_permissions.json"]
+zhixing = ["py.typed", "harness/default_permissions.json"]

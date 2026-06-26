@@ -19,7 +19,7 @@ swift:
 
 menubar:
 	cd swift && swiftc -O -o menubar menubar.swift -framework Cocoa -framework Foundation
-	mkdir -p ~/.knowagent/bin && cp swift/menubar ~/.knowagent/bin/
+	mkdir -p ~/.zhixing/bin && cp swift/menubar ~/.zhixing/bin/
 	@echo "✅ 菜单栏应用编译完成"
 	@echo "   运行: bash scripts/menubar.sh start"
 
@@ -32,15 +32,15 @@ whisper:
 	@if [ ! -d /tmp/whisper.cpp ]; then git clone --depth 1 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp; fi
 	cd /tmp/whisper.cpp && make -j 2>/dev/null || make
 	/tmp/whisper.cpp/models/download-ggml-model.sh base
-	mkdir -p ~/.knowagent/bin
-	cp /tmp/whisper.cpp/build/bin/whisper ~/.knowagent/bin/ 2>/dev/null || \
-	cp /tmp/whisper.cpp/whisper ~/.knowagent/bin/ 2>/dev/null || true
+	mkdir -p ~/.zhixing/bin
+	cp /tmp/whisper.cpp/build/bin/whisper ~/.zhixing/bin/ 2>/dev/null || \
+	cp /tmp/whisper.cpp/whisper ~/.zhixing/bin/ 2>/dev/null || true
 	@echo "✅ whisper.cpp 编译完成"
 
 clean:
 	rm -rf dist/ build/ *.egg-info/
 	rm -rf swift/ax_inspector swift/screen_ocr swift/hotkey
-	rm -rf ~/.knowagent/bin/
+	rm -rf ~/.zhixing/bin/
 	@echo "✅ 清理完成"
 
 test:

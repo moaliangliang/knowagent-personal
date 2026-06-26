@@ -19,7 +19,7 @@ import os
 import time
 from typing import Any
 
-from knowagent_personal.plugins import Skill
+from zhixing.plugins import Skill
 
 # ── 配置 ─────────────────────────────────────────────────
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -500,7 +500,7 @@ def cmd_windchill_generic(params: dict) -> str:
 # ═══════════════════════════════════════════════════════════
 
 def _bridge(action: str, params: dict) -> str:
-    """通过 HTTP 桥接到后端 KnowAgent 服务。"""
+    """通过 HTTP 桥接到后端 ZhiXing 服务。"""
     config = _load_config()
     mode = config.get("mode", "bridge")
 
@@ -544,7 +544,7 @@ class WindchillSkill(Skill):
     name = "windchill"
     description = "PTC Windchill PLM 集成 — 零件/BOM/工作流/文档/变更/Oracle 运维"
     version = "2.0.0"
-    author = "KnowAgent"
+    author = "ZhiXing"
     auto_register = True
 
     # ── 查询类 ──

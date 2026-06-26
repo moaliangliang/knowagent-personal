@@ -1,0 +1,222 @@
+/* 知行 (ZhiXing) 浮窗样式 */
+
+#ka-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  user-select: none;
+}
+
+#ka-float-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6);
+}
+
+#ka-panel {
+  position: fixed;
+  bottom: 88px;
+  right: 24px;
+  width: 380px;
+  height: 520px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  z-index: 2147483646;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+  animation: ka-slideIn 0.25s ease-out;
+}
+
+@keyframes ka-slideIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#ka-panel.open {
+  display: flex;
+}
+
+/* 头部 */
+#ka-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+#ka-header-title {
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#ka-header-title::before {
+  content: "🤖";
+}
+
+#ka-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+#ka-close-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+/* 连接状态 */
+#ka-status {
+  padding: 4px 18px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ka-status-connected { color: #22c55e; }
+.ka-status-disconnected { color: #ef4444; }
+
+/* 消息区域 */
+#ka-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  background: #f8f9fb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ka-msg {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.ka-msg-user {
+  background: #667eea;
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.ka-msg-bot {
+  background: white;
+  color: #333;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.ka-msg-loading {
+  background: white;
+  color: #999;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  animation: ka-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ka-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* 输入区 */
+#ka-input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  background: white;
+  flex-shrink: 0;
+}
+
+#ka-input {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 9px 14px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#ka-input:focus {
+  border-color: #667eea;
+}
+
+#ka-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #667eea;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+#ka-send-btn:hover {
+  background: #5a6fd6;
+}
+
+#ka-send-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* 帮助提示 */
+#ka-help {
+  padding: 8px 16px;
+  background: #f0f4ff;
+  border-top: 1px solid #e0e7ff;
+  font-size: 11px;
+  color: #667eea;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: none;
+}
+
+#ka-help:hover {
+  background: #e8eeff;
+}

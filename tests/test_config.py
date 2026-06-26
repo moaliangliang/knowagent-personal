@@ -6,7 +6,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from knowagent_personal.config import Config, CONFIG_DIR, DEFAULT_CONFIG
+from zhixing.config import Config, CONFIG_DIR, DEFAULT_CONFIG
 
 
 def test_default_values():

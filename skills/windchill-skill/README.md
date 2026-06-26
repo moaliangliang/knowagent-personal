@@ -1,6 +1,6 @@
 # 🌀 Windchill PLM Skill
 
-PTC Windchill 全功能集成 Skill for KnowAgent。
+PTC Windchill 全功能集成 Skill for ZhiXing。
 
 ## 安装
 
@@ -14,12 +14,12 @@ ka skill install /path/to/windchill_skill.py
 
 ## 配置
 
-首次使用前，创建 `~/.knowagent/windchill_skill.yaml`：
+首次使用前，创建 `~/.zhixing/windchill_skill.yaml`：
 
 ```yaml
 mode: bridge  # bridge(个人版) 或 direct(后端)
 bridge:
-  url: http://localhost:8000  # 后端 KnowAgent 地址
+  url: http://localhost:8000  # 后端 ZhiXing 地址
 ```
 
 配置自动生效。
@@ -87,5 +87,5 @@ ka windchill bom number=ABC
 python skills/windchill-skill/tests/test_skill.py
 
 # 安装到用户目录
-cp skills/windchill-skill/windchill_skill.py ~/.knowagent/skills/
+cp skills/windchill-skill/windchill_skill.py ~/.zhixing/skills/
 ```

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "知行助手 ZhiXing Assistant",
+  "version": "0.1.0",
+  "description": "AI 桌面助手 - 控制浏览器、填表、截图、查看系统状态",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "ws://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "ZhiXing",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["content.js"],
+    "matches": ["<all_urls>"]
+  }]
+}

@@ -5,18 +5,18 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # 清理注册表，重新迁移
-from knowagent_personal.harness.registry import TOOL_REGISTRY, import_from_legacy
-from knowagent_personal.agent.tools import COMMANDS, TOOL_SCHEMAS
+from zhixing.harness.registry import TOOL_REGISTRY, import_from_legacy
+from zhixing.agent.tools import COMMANDS, TOOL_SCHEMAS
 
 TOOL_REGISTRY._tools.clear()
 import_from_legacy(COMMANDS, TOOL_SCHEMAS)
 
 print("=" * 50)
-print("🔍 KnowAgent Harness 集成验证")
+print("🔍 ZhiXing Harness 集成验证")
 print("=" * 50)
 
 # ── 1. 验证 Harness 安装 ──
-from knowagent_personal.harness.integration import install_harness
+from zhixing.harness.integration import install_harness
 
 h = install_harness(migrate_legacy=False)  # 已通过 import_from_legacy 导入
 print(f"\n📊 1. Harness 安装")
@@ -28,7 +28,7 @@ for cat, cnt in sorted(h.status_report()['tools']['by_category'].items()):
     print(f"       {cat:15s}: {cnt}")
 
 # ── 2. 验证权限检查 ──
-from knowagent_personal.harness.permissions import PermissionMode
+from zhixing.harness.permissions import PermissionMode
 
 h.set_permission_mode("normal")
 print(f"\n🔒 2. 权限检查 (mode=normal)")
@@ -66,7 +66,7 @@ result = h.execute("lock_screen")
 print(f"   ✅ lock_screen (TRUSTED mode) → 允许")
 
 # ── 3. 验证事件总线 ──
-from knowagent_personal.harness.events import get_bus
+from zhixing.harness.events import get_bus
 
 bus = get_bus()
 events_before = len(bus.history)
@@ -93,27 +93,27 @@ print(f"   └─ 压缩释放: {freed} 字符")
 # ── 5. 验证持久化 ──
 h.context.memory.save_to_db()
 print(f"\n💾 5. 持久化")
-print(f"   ├─ T2 记忆已保存到 ~/.knowagent/personal.db")
+print(f"   ├─ T2 记忆已保存到 ~/.zhixing/personal.db")
 
-from knowagent_personal.harness.context import TieredMemory, MemoryTier
+from zhixing.harness.context import TieredMemory, MemoryTier
 new_mem = TieredMemory()
 new_mem.load_from_db()
 restored = new_mem.get_tier(MemoryTier.USER)
 print(f"   └─ 加载后 T2 记忆: {len(restored)} 条")
 
 # ── 6. 验证默认 Hooks ──
-from knowagent_personal.harness.default_hooks import install_default_hooks, tail_audit
+from zhixing.harness.default_hooks import install_default_hooks, tail_audit
 install_default_hooks()
 h.execute("battery_status")
 print(f"\n📋 6. 默认 Hooks")
 log_entries = tail_audit(5)
-print(f"   ├─ 审计日志: 写入 ~/.knowagent/logs/audit_*.jsonl")
+print(f"   ├─ 审计日志: 写入 ~/.zhixing/logs/audit_*.jsonl")
 print(f"   └─ 最近 {len(log_entries)} 条审计记录就绪")
 
 # ── 7. 验证 Agent 集成（mock Agent）──
 print(f"\n🤖 7. Agent 集成")
-from knowagent_personal.config import Config
-from knowagent_personal.agent.core import Agent
+from zhixing.config import Config
+from zhixing.agent.core import Agent
 
 # Mock LLM client
 class MockLLM:
@@ -133,7 +133,7 @@ print(f"   └─ agent.harness_status(): {agent.harness_status()['tools']['tota
 
 # ── 8. 权限策略文件 ──
 import json
-policy_path = os.path.expanduser("~/.knowagent/permissions.json")
+policy_path = os.path.expanduser("~/.zhixing/permissions.json")
 if os.path.exists(policy_path):
     with open(policy_path) as f:
         policy = json.load(f)

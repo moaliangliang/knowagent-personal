@@ -6,20 +6,20 @@ import os
 # Ensure package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from knowagent_personal.harness.registry import (
+from zhixing.harness.registry import (
     TOOL_REGISTRY, ToolDef, ToolCategory, PermissionLevel,
     register_tool, list_tools, import_from_legacy,
 )
-from knowagent_personal.harness.permissions import (
+from zhixing.harness.permissions import (
     PermissionManager, PermissionMode, PermissionVerdict, PermissionRule,
 )
-from knowagent_personal.harness.executor import (
+from zhixing.harness.executor import (
     Executor, ExecutionResult,
 )
-from knowagent_personal.harness.events import (
+from zhixing.harness.events import (
     EventBus, on_event, emit, EVENT_CATEGORIES, Hook,
 )
-from knowagent_personal.harness.context import (
+from zhixing.harness.context import (
     TieredMemory, ContextManager, MemoryTier,
 )
 
@@ -228,7 +228,7 @@ def test_executor_workflow():
     @register_tool("step2", permission=PermissionLevel.READ_ONLY)
     def cmd2(p): return f"步骤2: {p.get('name', '?')}"
 
-    from knowagent_personal.harness.permissions import PermissionManager
+    from zhixing.harness.permissions import PermissionManager
     pm = PermissionManager()
     pm.set_mode(PermissionMode.TRUSTED)
 
@@ -278,7 +278,7 @@ def test_run_isolated():
         call_count += 1
         return "高风险执行"
 
-    from knowagent_personal.harness.sandbox import run_isolated
+    from zhixing.harness.sandbox import run_isolated
 
     # 安全工具直接执行
     result = run_isolated("safe_tool")
@@ -290,7 +290,7 @@ def test_run_isolated():
 
 def test_harness_integration():
     """测试 Harness 集成入口"""
-    from knowagent_personal.harness.integration import Harness
+    from zhixing.harness.integration import Harness
 
     # 注册一些测试工具
     TOOL_REGISTRY._tools.clear()

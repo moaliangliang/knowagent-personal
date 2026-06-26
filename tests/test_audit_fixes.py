@@ -14,7 +14,7 @@ print("=" * 50)
 # ═══════════════════════════════════════════════════════════
 print("\n🔴 P0-1: 权限绕过修复")
 
-from knowagent_personal.harness.registry import TOOL_REGISTRY, register_tool, PermissionLevel
+from zhixing.harness.registry import TOOL_REGISTRY, register_tool, PermissionLevel
 TOOL_REGISTRY._tools.clear()
 
 @register_tool("test_lock", permission=PermissionLevel.SYSTEM_CTRL)
@@ -23,8 +23,8 @@ def cmd_lock(params): return "executed"
 @register_tool("test_write", permission=PermissionLevel.FILE_WRITE)
 def cmd_write(params): return "written"
 
-from knowagent_personal.harness.permissions import PermissionManager, PermissionMode
-from knowagent_personal.harness.executor import Executor
+from zhixing.harness.permissions import PermissionManager, PermissionMode
+from zhixing.harness.executor import Executor
 
 pm = PermissionManager()
 pm.set_mode(PermissionMode.NORMAL)
@@ -46,8 +46,8 @@ assert result.success, "TRUSTED 模式应允许"
 print("  ✅ TRUSTED 模式允许执行")
 
 # 验证 core.py _execute_tool 不绕过
-from knowagent_personal.config import Config
-from knowagent_personal.agent.core import Agent
+from zhixing.config import Config
+from zhixing.agent.core import Agent
 
 class MockLLM:
     def chat(self, messages, **kw):
@@ -128,7 +128,7 @@ print("  ✅ ContextVar 线程隔离: 5 个线程各自独立")
 # ═══════════════════════════════════════════════════════════
 print("\n🟡 P1-1: 威胁检测增强")
 
-from knowagent_personal.harness.threat_detection import scan_input, scan_strict
+from zhixing.harness.threat_detection import scan_input, scan_strict
 
 THREAT_TESTS = [
     # (输入, 是否阻止, 描述)
@@ -177,7 +177,7 @@ print(f"  严格模式: {sp2}/{len(strict_tests)} 通过")
 # ═══════════════════════════════════════════════════════════
 print("\n🟡 P1-2: 沙箱导入检测增强")
 
-from knowagent_personal.harness.sandbox_whitelist import CodeSandbox
+from zhixing.harness.sandbox_whitelist import CodeSandbox
 
 sb = CodeSandbox()
 
@@ -208,7 +208,7 @@ print(f"  {spassed}/{len(SANDBOX_TESTS)} 通过")
 print("\n🟠 P2-4: registry 命名一致性")
 
 TOOL_REGISTRY._tools.clear()
-from knowagent_personal.harness.registry import import_from_legacy
+from zhixing.harness.registry import import_from_legacy
 
 @register_tool("hello")
 def cmd_hello(params): return "hi"
@@ -226,7 +226,7 @@ print("  ✅ import_from_legacy 与 @register_tool 命名一致")
 # ═══════════════════════════════════════════════════════════
 print("\n🔵 P3-1: _utils 提取")
 
-from knowagent_personal.agent._utils import run_cmd, osa_escape
+from zhixing.agent._utils import run_cmd, osa_escape
 
 assert osa_escape('hello') == 'hello'
 assert osa_escape('hello"world') == 'hello\\"world'
@@ -239,7 +239,7 @@ print("  ✅ run_cmd 可用")
 # ═══════════════════════════════════════════════════════════
 print("\n🔵 P3-2: help_text 动态计数")
 
-from knowagent_personal.agent.help_text import get_help_text
+from zhixing.agent.help_text import get_help_text
 zh = get_help_text("zh")
 assert "Harness" in zh.get("subtitle", "")
 print(f"  ✅ 帮助文档可读: {zh['title']}")

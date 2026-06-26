@@ -1,0 +1,48 @@
+# 网站注册自动化测试脚本
+# 用法: ka auto_script path=~/register.yaml
+
+- action: screenshot
+  name: 注册页初始状态
+
+- action: click
+  target: 注册
+  wait: 1
+
+- action: click
+  target: 用户名
+  wait: 0.5
+
+- action: type
+  value: testuser123
+  wait: 0.3
+
+- action: click
+  target: 密码
+  wait: 0.5
+
+- action: type
+  value: MyPassword2026!
+  wait: 0.3
+
+- action: click
+  target: 邮箱
+  wait: 0.5
+
+- action: type
+  value: test@example.com
+  wait: 0.3
+
+- action: click
+  target: 同意
+  wait: 0.5
+
+- action: click
+  target: 提交
+  wait: 2
+
+- action: assert
+  target: 注册成功
+  wait: 0
+
+- action: screenshot
+  name: 注册结果

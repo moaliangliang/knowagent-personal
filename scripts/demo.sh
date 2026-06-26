@@ -1,12 +1,12 @@
 #!/bin/bash
-# Mac Agent Personal - 功能演示脚本
+# 知行 ZhiXing - 功能演示脚本
 # 直接运行: bash scripts/demo.sh
 
-KA="python3 -m knowagent_personal"
+ZHIXING="python3 -m zhixing"
 cd "$(dirname "$0")/.."
 
 echo "============================================"
-echo "  🧠 Mac Agent Personal - 功能演示"
+echo "  🧠 知行 ZhiXing - 功能演示"
 echo "============================================"
 echo ""
 

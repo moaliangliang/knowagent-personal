@@ -336,8 +336,8 @@ def generate_skill():
     _center_text(draw, 110, "像装 App 一样装技能", get_font(28), TEXT_GRAY)
 
     # 代码示例卡片
-    code = '''# ~/.knowagent/skills/weather.py
-from knowagent_personal.plugins import Skill
+    code = '''# ~/.zhixing/skills/weather.py
+from zhixing.plugins import Skill
 
 class WeatherSkill(Skill):
     name = "天气查询"
@@ -360,7 +360,7 @@ class WeatherSkill(Skill):
     features = [
         ("📝 自动注册", "cmd_ 方法自动变为系统命令，无需手动配置"),
         ("📋 自动 Schema", "函数签名自动生成 OpenAI 兼容 tool schema"),
-        ("🔌 即放即用", "文件放入 ~/.knowagent/skills/ 目录，重启即加载"),
+        ("🔌 即放即用", "文件放入 ~/.zhixing/skills/ 目录，重启即加载"),
         ("🌍 远程安装", "支持 gh:user/repo 从 GitHub 安装"),
         ("🔍 发现与管理", "skill list / search / install / remove 完整生命周期"),
     ]

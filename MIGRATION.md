@@ -1,6 +1,6 @@
-# KnowAgent 架构迁移指南
+# ZhiXing 架构迁移指南
 
-## 将 Claude Code 架构原则应用到 Mac Agent Personal 项目
+## 将 Claude Code 架构原则应用到 ZhiXing 项目
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### Phase 0：基础设施（已完成 ✅）
 
-已在 `knowagent_personal/harness/` 创建 7 个核心模块：
+已在 `zhixing/harness/` 创建 7 个核心模块：
 
 | 模块 | 文件 | 对应 Claude Code 原则 |
 |------|------|----------------------|
@@ -39,11 +39,11 @@
 
 **目标**: 将 Harness 注入现有 Agent，启用权限检查和事件日志
 
-在 `knowagent_personal/agent/core.py` 的 `Agent.__init__()` 加入一行：
+在 `zhixing/agent/core.py` 的 `Agent.__init__()` 加入一行：
 
 ```python
 # core.py — 改动点
-from knowagent_personal.harness.integration import install_harness
+from zhixing.harness.integration import install_harness
 
 class Agent:
     def __init__(self, llm_client, config):
@@ -71,7 +71,7 @@ class Agent:
 
 **目标**: 配置 Deny-First 权限规则，决定哪些工具需要审批
 
-创建 `~/.knowagent/permissions.json`：
+创建 `~/.zhixing/permissions.json`：
 
 ```json
 {
@@ -97,7 +97,7 @@ class Agent:
 ```python
 harness = self._harness
 harness.permissions.set_mode("normal")  # 从 config 读取
-harness.permissions.load_rules("~/.knowagent/permissions.json")
+harness.permissions.load_rules("~/.zhixing/permissions.json")
 ```
 
 **权限模式速查**:
@@ -118,20 +118,20 @@ harness.permissions.load_rules("~/.knowagent/permissions.json")
 
 ```python
 # hooks/setup.py — 运行一次即生效
-from knowagent_personal.harness.events import Hook, get_bus
+from zhixing.harness.events import Hook, get_bus
 
 bus = get_bus()
 
 # 1. 审计日志 —— 记录每次工具执行
 @bus.on("tool.after")
 def audit_log(tool_name, result, duration, **kw):
-    with open("~/.knowagent/logs/audit.csv", "a") as f:
+    with open("~/.zhixing/logs/audit.csv", "a") as f:
         f.write(f"{time.time()},{tool_name},{result.success},{duration:.2f}\n")
 
 # 2. 通知 —— 高风险操作发通知
 @bus.on("tool.before")
 def notify_high_risk(tool_name, **kw):
-    from knowagent_personal.agent.tools import cmd_notification
+    from zhixing.agent.tools import cmd_notification
     if tool_name in ("lock_screen", "workflow_execute"):
         cmd_notification({"text": f"即将执行: {tool_name}", "title": "⚠ 安全提醒"})
 
@@ -178,7 +178,7 @@ def cmd_mail_send(params: dict) -> str:
 COMMANDS["mail_send"] = cmd_mail_send  # 手动注册
 
 # 新写法 — 装饰器注册
-from knowagent_personal.harness.registry import register_tool, ToolCategory, PermissionLevel
+from zhixing.harness.registry import register_tool, ToolCategory, PermissionLevel
 
 @register_tool(
     "mail_send",
@@ -221,18 +221,18 @@ harness.context.add_fact(
 
 # 会话事实（T1 — 仅当前会话）
 harness.context.add_fact(
-    "current_project", "KnowAgent",
+    "current_project", "ZhiXing",
 )
 
 # 搜索记忆
 results = harness.context.remember("周杰伦")
 ```
 
-持久化记忆到 `~/.knowagent/personal.db`：
+持久化记忆到 `~/.zhixing/personal.db`：
 
 ```python
-# 使用已有 RAG（knowagent_personal/memory/rag.py）
-from knowagent_personal.memory.rag import PersonalRAG
+# 使用已有 RAG（zhixing/memory/rag.py）
+from zhixing.memory.rag import PersonalRAG
 
 rag = PersonalRAG(self.config)
 if rag.init():
@@ -288,7 +288,7 @@ if rag.init():
 ```python
 # Phase 1 验证
 python3 -c "
-from knowagent_personal.harness.integration import install_harness
+from zhixing.harness.integration import install_harness
 h = install_harness()
 print(f'✅ 工具: {h.status_report()[\"tools\"][\"total\"]} 个已注册')
 print(f'✅ 权限模式: {h.status_report()[\"permissions\"][\"mode\"]}')
@@ -299,7 +299,7 @@ for t in h.list_tools()[:5]:
 
 # Phase 2 验证
 python3 -c "
-from knowagent_personal.harness.integration import install_harness
+from zhixing.harness.integration import install_harness
 h = install_harness()
 
 # 只读工具应通过
@@ -323,7 +323,7 @@ pip install -e .
 
 # 2. 一键注入 Agent
 python3 -c "
-from knowagent_personal.harness.integration import install_harness
+from zhixing.harness.integration import install_harness
 h = install_harness(migrate_legacy=True)
 print('🚀 Harness 就绪!')
 print(f'   已注册 {h.status_report()[\"tools\"][\"total\"]} 个工具')
@@ -344,7 +344,7 @@ else:
 
 ## 原则映射
 
-| # | Claude Code 原则 | KnowAgent 实现 | 迁移阶段 |
+| # | Claude Code 原则 | ZhiXing 实现 | 迁移阶段 |
 |---|-----------------|----------------|---------|
 | 1 | 框架/模型分离 | `Harness` 类 vs `Agent` 类 | Phase 1 |
 | 2 | 拒绝优先安全 | `DenyFirstPolicy` + 7 层检查 | Phase 2 |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""knowagent-personal 综合测试脚本
+"""zhixing 综合测试脚本
 运行方式: python3 tests/run_all.py [-v]
 
 测试内容:
@@ -68,10 +68,10 @@ def test_project_structure():
     section("Phase 0 — 项目结构")
 
     required_dirs = [
-        "knowagent_personal",
-        "knowagent_personal/agent",
-        "knowagent_personal/memory",
-        "knowagent_personal/ui",
+        "zhixing",
+        "zhixing/agent",
+        "zhixing/memory",
+        "zhixing/ui",
         "swift",
         "tests",
     ]
@@ -86,21 +86,21 @@ def test_project_structure():
         "Makefile",
         "README.md",
         ".gitignore",
-        "knowagent_personal/__init__.py",
-        "knowagent_personal/__main__.py",
-        "knowagent_personal/main.py",
-        "knowagent_personal/config.py",
-        "knowagent_personal/app.py",
-        "knowagent_personal/agent/__init__.py",
-        "knowagent_personal/agent/tools.py",
-        "knowagent_personal/agent/llm.py",
-        "knowagent_personal/agent/core.py",
-        "knowagent_personal/memory/__init__.py",
-        "knowagent_personal/memory/db.py",
-        "knowagent_personal/memory/rag.py",
-        "knowagent_personal/ui/__init__.py",
-        "knowagent_personal/ui/cli.py",
-        "knowagent_personal/ui/menubar.py",
+        "zhixing/__init__.py",
+        "zhixing/__main__.py",
+        "zhixing/main.py",
+        "zhixing/config.py",
+        "zhixing/app.py",
+        "zhixing/agent/__init__.py",
+        "zhixing/agent/tools.py",
+        "zhixing/agent/llm.py",
+        "zhixing/agent/core.py",
+        "zhixing/memory/__init__.py",
+        "zhixing/memory/db.py",
+        "zhixing/memory/rag.py",
+        "zhixing/ui/__init__.py",
+        "zhixing/ui/cli.py",
+        "zhixing/ui/menubar.py",
         "swift/ax_inspector.swift",
         "swift/screen_ocr.swift",
         "swift/hotkey.swift",
@@ -121,17 +121,17 @@ def test_imports():
     section("Phase 0 — 导入完整性")
 
     modules = [
-        "knowagent_personal",
-        "knowagent_personal.config",
-        "knowagent_personal.main",
-        "knowagent_personal.agent.tools",
-        "knowagent_personal.agent.llm",
-        "knowagent_personal.agent.core",
-        "knowagent_personal.memory.db",
-        "knowagent_personal.memory.rag",
-        "knowagent_personal.ui.cli",
-        "knowagent_personal.ui.menubar",
-        "knowagent_personal.app",
+        "zhixing",
+        "zhixing.config",
+        "zhixing.main",
+        "zhixing.agent.tools",
+        "zhixing.agent.llm",
+        "zhixing.agent.core",
+        "zhixing.memory.db",
+        "zhixing.memory.rag",
+        "zhixing.ui.cli",
+        "zhixing.ui.menubar",
+        "zhixing.app",
     ]
     for mod_name in modules:
         try:
@@ -148,7 +148,7 @@ def test_imports():
 def test_commands():
     section("Phase 0 — 命令注册表")
 
-    from knowagent_personal.agent.tools import COMMANDS, get_tool_definitions
+    from zhixing.agent.tools import COMMANDS, get_tool_definitions
 
     # 数量
     check(len(COMMANDS) >= 31, f"命令数量 >= 31 (实际: {len(COMMANDS)})")
@@ -202,7 +202,7 @@ def test_commands():
 def test_config():
     section("Phase 0 — 配置管理")
 
-    from knowagent_personal.config import Config
+    from zhixing.config import Config
 
     c = Config()
     check(c.get("llm.provider") == "ollama", "默认 provider: ollama")
@@ -220,7 +220,7 @@ def test_config():
 
     # 清理
     import os
-    cfg_file = os.path.expanduser("~/.knowagent/config.yaml")
+    cfg_file = os.path.expanduser("~/.zhixing/config.yaml")
     import yaml
     with open(cfg_file) as f:
         data = yaml.safe_load(f) or {}
@@ -240,16 +240,16 @@ def test_config():
 def test_entry_points():
     section("Phase 0 — 包入口")
 
-    # python -m knowagent_personal --help
-    rc, out = run_cmd([sys.executable, "-m", "knowagent_personal", "--help"])
-    check(rc == 0 and ("usage" in out.lower() or "用法" in out), "python -m knowagent_personal --help")
+    # python -m zhixing --help
+    rc, out = run_cmd([sys.executable, "-m", "zhixing", "--help"])
+    check(rc == 0 and ("usage" in out.lower() or "用法" in out), "python -m zhixing --help")
 
     # ka help (single command)
-    rc, out = run_cmd([sys.executable, "-m", "knowagent_personal", "help"])
+    rc, out = run_cmd([sys.executable, "-m", "zhixing", "help"])
     check(rc == 0 and "命令列表" in out, "ka help 显示命令列表")
 
     # ka 系统状态（快速命令）
-    rc, out = run_cmd([sys.executable, "-m", "knowagent_personal", "系统状态"])
+    rc, out = run_cmd([sys.executable, "-m", "zhixing", "系统状态"])
     if rc == 0 and ("CPU" in out or "系统" in out or "状态" in out):
         check(True, "ka 系统状态 执行成功")
     else:
@@ -263,8 +263,8 @@ def test_entry_points():
 def test_rag():
     section("Phase 1 — RAG 知识库")
 
-    from knowagent_personal.memory.rag import PersonalRAG
-    from knowagent_personal.config import Config
+    from zhixing.memory.rag import PersonalRAG
+    from zhixing.config import Config
 
     config = Config()
     rag = PersonalRAG(config)
@@ -293,7 +293,7 @@ def test_rag():
         log(f"RAG 跳过: 初始化异常 — {e}", "SKIP")
 
     # knowledge_retrieve 函数
-    from knowagent_personal.agent.tools import knowledge_retrieve, set_rag
+    from zhixing.agent.tools import knowledge_retrieve, set_rag
     result = knowledge_retrieve("test")
     if ok:
         check(isinstance(result, str), "knowledge_retrieve 返回 str")
@@ -308,7 +308,7 @@ def test_rag():
 def test_memory():
     section("Phase 1 — 对话记忆持久化")
 
-    from knowagent_personal.memory.db import (
+    from zhixing.memory.db import (
         init_db,
         save_message,
         get_recent_messages,
@@ -336,9 +336,9 @@ def test_memory():
     check(len(msgs_after) == 0, "清除对话历史")
 
     # 通过 Agent 自动持久化
-    from knowagent_personal.config import Config
-    from knowagent_personal.agent.llm import LLMClient
-    from knowagent_personal.agent.core import Agent
+    from zhixing.config import Config
+    from zhixing.agent.llm import LLMClient
+    from zhixing.agent.core import Agent
 
     config = Config()
     llm = LLMClient(config)
@@ -353,7 +353,7 @@ def test_memory():
 def test_voice():
     section("Phase 1 — 语音输入模块")
 
-    from knowagent_personal.agent.tools import cmd_voice_input
+    from zhixing.agent.tools import cmd_voice_input
 
     # 不真正录音，只验证函数存在且能处理无麦克风场景
     result = cmd_voice_input({})
@@ -374,7 +374,7 @@ def test_menubar():
 
     # 只验证导入，不真正启动 GUI
     try:
-        from knowagent_personal.ui.menubar import run_menubar
+        from zhixing.ui.menubar import run_menubar
         check(True, "menubar 模块导入成功")
     except ImportError as e:
         check(False, f"menubar 导入失败: {e}")
@@ -383,7 +383,7 @@ def test_menubar():
 
     # app.py 入口
     try:
-        from knowagent_personal.app import menubar, main
+        from zhixing.app import menubar, main
         check(True, "app.py 入口导入成功")
     except Exception as e:
         check(False, f"app.py 导入失败: {e}")
@@ -401,9 +401,9 @@ def test_menubar():
 def test_agent_core():
     section("Phase 1 — Agent 核心")
 
-    from knowagent_personal.agent.core import Agent, SYSTEM_PROMPT
-    from knowagent_personal.config import Config
-    from knowagent_personal.agent.llm import LLMClient
+    from zhixing.agent.core import Agent, SYSTEM_PROMPT
+    from zhixing.config import Config
+    from zhixing.agent.llm import LLMClient
 
     # 验证 SYSTEM_PROMPT 包含新工具
     check("knowledge_retrieve" in SYSTEM_PROMPT, "SYSTEM_PROMPT 含 knowledge_retrieve 描述")
@@ -428,8 +428,8 @@ def test_agent_core():
     check("未知命令" in result, "未知命令错误提示")
 
     # 验证 SQLite 已初始化 (配置目录应存在)
-    db_path = os.path.expanduser("~/.knowagent/personal.db")
-    check(os.path.exists(os.path.dirname(db_path)), "~/.knowagent 目录存在")
+    db_path = os.path.expanduser("~/.zhixing/personal.db")
+    check(os.path.exists(os.path.dirname(db_path)), "~/.zhixing 目录存在")
 
 
 # ═══════════════════════════════════════════════════════════

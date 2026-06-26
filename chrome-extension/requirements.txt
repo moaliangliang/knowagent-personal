@@ -1,0 +1,2 @@
+# KnowAgent WebSocket Server
+websockets>=12.0

@@ -4,7 +4,7 @@ description: >
   PTC Windchill PLM Integration — 56 个命令覆盖零件/BOM/工作流/文档/
   变更管理/事件订阅/Worker 管理/系统管理/Oracle DBA
 version: 2.0.0
-author: KnowAgent
+author: ZhiXing
 triggers:
   - windchill
   - 零件
@@ -28,7 +28,7 @@ triggers:
 
 PTC Windchill 全功能集成 Skill。支持两种模式：
 
-- **bridge 模式**（个人版默认）：通过 HTTP 桥接后端 KnowAgent 服务
+- **bridge 模式**（个人版默认）：通过 HTTP 桥接后端 ZhiXing 服务
 - **direct 模式**（后端）：直接使用 `WindchillODataClient` 操作 Windchill
 
 ## 安装
@@ -46,7 +46,7 @@ ka skill list
 
 ## 配置
 
-编辑 `~/.knowagent/skills/windchill_skill.yaml`：
+编辑 `~/.zhixing/skills/windchill_skill.yaml`：
 
 ```yaml
 mode: bridge  # bridge 或 direct
