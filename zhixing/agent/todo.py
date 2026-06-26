@@ -191,21 +191,81 @@ class TodoManager:
 
     @staticmethod
     def sync_to_reminders(title: str, notes: str = "", due_date: str = "") -> str:
-        """同步到 macOS 提醒事项。"""
-        safe_title = title.replace('"', '\\"')
-        safe_notes = notes.replace('"', '\\"')
+        """创建提醒事项，返回提醒 ID。"""
+        safe_title = title.replace('"', '\\"').replace("\\", "\\\\")
+        safe_notes = notes.replace('"', '\\"').replace("\\", "\\\\")
+        props = f'{{name:"{safe_title}", body:"{safe_notes}"}}'
         script = f"""
         tell application "Reminders"
-            set newReminder to make new reminder with properties {{name:"{safe_title}"}}
-            if "{safe_notes}" is not "" then
-                set body of newReminder to "{safe_notes}"
+            set newReminder to make new reminder with properties {props}
+            if "{due_date}" is not "" then
+                set due date of newReminder to date "{due_date} 09:00:00"
             end if
+            set idStr to id of newReminder
+            return idStr
         end tell"""
         try:
-            subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
-            return "✅ 已同步到 macOS 提醒事项"
+            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+            rid = r.stdout.strip()
+            if rid.startswith("x-apple-reminder"):
+                return f"✅ 提醒已创建|{rid}"
+            return "✅ 已同步到提醒事项"
         except Exception as e:
-            return f"⚠️ 同步提醒事项失败: {e}"
+            return f"⚠️ 同步失败: {e}"
+
+    @staticmethod
+    def _get_reminder_id(todo: TodoItem) -> str | None:
+        """从 todo 的 notes 中提取提醒 ID。"""
+        if not todo.notes:
+            return None
+        if todo.notes.startswith("rid:"):
+            rid = todo.notes.split("rid:", 1)[1].strip()
+            return f"x-apple-reminder://{rid}"
+        return None
+
+    @staticmethod
+    def sync_complete_reminder(todo: TodoItem) -> str:
+        """标记提醒事项为已完成。"""
+        rid = TodoManager._get_reminder_id(todo)
+        if not rid:
+            return "⚠️ 无提醒ID（可能是旧数据，跳过）"
+        script = f"""
+        tell application "Reminders"
+            try
+                set target to reminder id "{rid}"
+                set completed of target to true
+                return "ok"
+            on error
+                return "not found"
+            end try
+        end tell"""
+        try:
+            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+            return "✅ 提醒已标记完成" if "ok" in r.stdout else "⚠️ 提醒未找到"
+        except Exception as e:
+            return f"⚠️ 操作失败: {e}"
+
+    @staticmethod
+    def sync_delete_reminder(todo: TodoItem) -> str:
+        """删除提醒事项。"""
+        rid = TodoManager._get_reminder_id(todo)
+        if not rid:
+            return "⚠️ 无提醒ID（跳过）"
+        script = f"""
+        tell application "Reminders"
+            try
+                set target to reminder id "{rid}"
+                delete target
+                return "ok"
+            on error
+                return "not found"
+            end try
+        end tell"""
+        try:
+            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+            return "✅ 提醒已删除" if "ok" in r.stdout else "⚠️ 提醒未找到"
+        except Exception as e:
+            return f"⚠️ 操作失败: {e}"
 
     @staticmethod
     def list_reminders() -> str:
@@ -239,18 +299,27 @@ def cmd_todo_add(params: dict) -> str:
     if not title:
         return "❌ 需要 title 参数"
     mgr = TodoManager.get()
+    due = params.get("due_date", "")
     item = mgr.add(
         title=title,
         priority=params.get("priority", "medium"),
         category=params.get("category", "general"),
-        due_date=params.get("due_date", ""),
+        due_date=due,
         notes=params.get("notes", ""),
     )
-    # 同步到 macOS Reminders
+    # 同步到 macOS Reminders（含截止日期 + 提取提醒 ID）
     sync = params.get("sync", "true").lower() in ("true", "1", "yes")
     sync_result = ""
     if sync:
-        sync_result = "\n" + mgr.sync_to_reminders(title, params.get("notes", ""))
+        result = mgr.sync_to_reminders(title, params.get("notes", ""), due)
+        sync_result = "\n" + (result.split("|")[0] if "|" in result else result)
+        # 提取提醒 ID 存入 notes
+        if "|" in result:
+            rid = result.split("|", 1)[1].strip()
+            if rid.startswith("x-apple-reminder"):
+                existing = params.get("notes", "")
+                rid_short = rid.split("/")[-1].split("?")[0]
+                mgr.update(item.id, notes=f"rid:{rid_short}")
     return f"✅ 已添加 #{item.id}: {title} ({item.priority}){sync_result}"
 
 
@@ -273,7 +342,12 @@ def cmd_todo_done(params: dict) -> str:
         return "❌ 需要 id 参数"
     mgr = TodoManager.get()
     if mgr.done(item_id):
-        return f"✅ #{item_id} 已标记完成 🎉"
+        # 同步完成提醒
+        todo = next((t for t in mgr._todos if t.id == item_id), None)
+        sync = ""
+        if todo and todo.notes.startswith("x-apple-reminderkit:"):
+            sync = "\n" + mgr.sync_complete_reminder(todo)
+        return f"✅ #{item_id} 已标记完成 🎉{sync}"
     return f"❌ 未找到 #{item_id}"
 
 
@@ -282,7 +356,12 @@ def cmd_todo_undo(params: dict) -> str:
     item_id = int(params.get("id", 0))
     mgr = TodoManager.get()
     if mgr.undo(item_id):
-        return f"↩️ #{item_id} 已恢复为待办"
+        # 重新创建提醒
+        todo = next((t for t in mgr._todos if t.id == item_id), None)
+        sync = ""
+        if todo:
+            sync = "\n" + mgr.sync_to_reminders(todo.title, todo.notes, todo.due_date)
+        return f"↩️ #{item_id} 已恢复为待办{sync}"
     return f"❌ 未找到 #{item_id}"
 
 
@@ -293,11 +372,22 @@ def cmd_todo_delete(params: dict) -> str:
     if item_id == 0:
         deleted = mgr.delete_all_pending()
         if deleted:
+            # 同步删除提醒
+            sync_results = []
+            for t in deleted:
+                if t.notes.startswith("x-apple-reminderkit:"):
+                    sync_results.append(mgr.sync_delete_reminder(t))
             names = "\n".join(f"  🗑️ #{t.id} {t.title}" for t in deleted)
-            return f"🗑️ 已删除 {len(deleted)} 项待办:\n{names}"
+            sync_txt = "\n" + "\n".join(sync_results) if sync_results else ""
+            return f"🗑️ 已删除 {len(deleted)} 项待办:\n{names}{sync_txt}"
         return "📭 没有待办事项需要删除"
+    # 单条删除
+    todo = next((t for t in mgr._todos if t.id == item_id), None)
     if mgr.delete(item_id):
-        return f"🗑️ #{item_id} 已删除"
+        sync = ""
+        if todo and todo.notes.startswith("x-apple-reminderkit:"):
+            sync = "\n" + mgr.sync_delete_reminder(todo)
+        return f"🗑️ #{item_id} 已删除{sync}"
     return f"❌ 未找到 #{item_id}"
 
 
