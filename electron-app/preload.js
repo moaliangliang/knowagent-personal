@@ -4,16 +4,18 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
-// Launcher 窗口专用 API
+// Launcher 窗口 + 浮动按钮 API
 contextBridge.exposeInMainWorld("electronAPI", {
   hideWindow: () => ipcRenderer.invoke("launcher-hide"),
   showResult: (result) => ipcRenderer.invoke("launcher-show-result", result),
+  toggleMainWindow: () => ipcRenderer.invoke("toggle-window"),
 });
 
 contextBridge.exposeInMainWorld("ka", {
   // 窗口
   toggle: () => ipcRenderer.invoke("toggle-window"),
   hide: () => ipcRenderer.invoke("hide-window"),
+  hideNoFloat: () => ipcRenderer.invoke("hide-window-nofloat"),
 
   // 系统
   platform: () => ipcRenderer.invoke("get-platform"),
@@ -24,6 +26,9 @@ contextBridge.exposeInMainWorld("ka", {
   onGlobalScreenshot: (cb) => ipcRenderer.on("global-screenshot", () => cb()),
   onLog: (cb) => ipcRenderer.on("log", (_, msg) => cb(msg)),
   onLauncherResult: (cb) => ipcRenderer.on("launcher-result", (_, msg) => cb(msg)),
+
+  // ── 命令执行 ──
+  runCommand: (cmd) => ipcRenderer.invoke("run-command", cmd),
 
   // ── 云同步 ──
   syncPush: () => ipcRenderer.invoke("sync-push"),

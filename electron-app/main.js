@@ -71,6 +71,7 @@ const WIN_HEIGHT = 600;
 
 let mainWindow = null;
 let launcherWindow = null;
+let floatBtn = null;
 let tray = null;
 let pythonProcess = null;
 
@@ -153,7 +154,8 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: true,
-    alwaysOnTop: cfg.alwaysOnTop !== false,
+    type: "panel",
+    alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
     minWidth: 320,
@@ -167,11 +169,26 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
 
-  // 淡入效果
+  // 默认显示 + 淡入效果
   mainWindow.once("ready-to-show", () => {
     mainWindow.setOpacity(0);
     mainWindow.show();
+    mainWindow.setAlwaysOnTop(true);
     fadeTo(1, 200);
+  });
+
+  // 窗口隐藏或最小化时显示浮动按钮
+  mainWindow.on("hide", () => {
+    if (floatBtn && !floatBtn.isDestroyed()) {
+      floatBtn.show();
+      floatBtn.setAlwaysOnTop(true, "screen-saver");
+    }
+  });
+  mainWindow.on("minimize", () => {
+    if (floatBtn && !floatBtn.isDestroyed()) {
+      floatBtn.show();
+      floatBtn.setAlwaysOnTop(true, "screen-saver");
+    }
   });
 
   // 记录窗口位置
@@ -192,9 +209,75 @@ function createWindow() {
     }
   }
 
+  // ── 浮动按钮 ─────────────────────────────
+  createFloatBtn();
+
   if (isDev) {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
+}
+
+// ── 全局浮动按钮 ─────────────────────────────
+
+const BTN_SIZE = 42;
+
+function createFloatBtn() {
+  if (floatBtn) return;
+  const display = screen.getPrimaryDisplay().workArea;
+
+  floatBtn = new BrowserWindow({
+    width: BTN_SIZE,
+    height: BTN_SIZE,
+    x: display.x + display.width - BTN_SIZE - 20,
+    y: Math.floor(display.y + display.height / 2),
+    frame: false,
+    transparent: true,
+    skipTaskbar: true,
+    show: false,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  // 用原生 macOS 窗口级别确保在所有应用之上
+  floatBtn.setAlwaysOnTop(true, "screen-saver");
+
+  floatBtn.loadURL(`data:text/html,
+    <!DOCTYPE html>
+    <html>
+    <head><style>
+      * { margin:0; padding:0; box-sizing:border-box; user-select:none;
+          -webkit-app-region: no-drag; }
+      body {
+        width: ${BTN_SIZE}px; height: ${BTN_SIZE}px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,180,255,0.15);
+        border-radius: 50%;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(0,180,255,0.3);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 20px;
+      }
+      body:hover { background: rgba(0,180,255,0.3); transform: scale(1.1); }
+      body:active { transform: scale(0.95); }
+    </style></head>
+    <body><span style="color:rgba(255,255,255,0.9);font-weight:bold;">Z</span></body>
+    <script>
+      document.body.onclick = () => {
+        window.electronAPI && window.electronAPI.toggleMainWindow();
+      };
+    </script>
+    </html>`);
+
+  floatBtn.on("blur", () => {});
+  floatBtn.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  floatBtn.setIgnoreMouseEvents(false);
+  floatBtn.show();
 }
 
 // ── Launcher 窗口 ────────────────────────────
@@ -271,7 +354,9 @@ function toggleWindow() {
   if (mainWindow.isVisible()) {
     fadeTo(0, 120);
     setTimeout(() => mainWindow.hide(), 120);
+    if (floatBtn && !floatBtn.isDestroyed()) { floatBtn.show(); floatBtn.setAlwaysOnTop(true, "screen-saver"); }
   } else {
+    if (floatBtn && !floatBtn.isDestroyed()) floatBtn.hide();
     mainWindow.setOpacity(0);
     mainWindow.show();
     fadeTo(1, 200);
@@ -285,7 +370,7 @@ function toggleWindow() {
 function createTray() {
   // 用 Base64 内嵌图标，确保不依赖文件路径
   // 紫色圆形机器人脸图标 (22x22)
-  const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAACTklEQVR4nJ2Vv2/TQBTH3yWdADmLMzR/QQYapFbIDO5f0AxkAMGUAmcJw8jCws7CCEaKKzkLVGJwhvwH8ZCoAqnJ4qFd6VAviVjh0HvxHeeLHal8pad3vh+fe37PdwbLsixAjUWDrEpT4ZJt0wZjXA1s7DoCTYEvBIcLcUR9WzbYIWiXLcuAsi3+/N5Yu5xMDxqHD2jO8mrGCoNdttypihJy4ONnz6nPzRYT9MkogZD7XTnOanWab8JZGVTkESI0dP1DbEewBh+39xB6xcPge+j6TevF/WsC1eqFyFWDv/1UyJkE2l6HgKhsMAdowwGkcIvWJIEaU+vevzKCnQoskKANxsK1d/eEbjAWZEafi0Zr8vUyjbWyaE1l8bwHR7MAbOhRO5f+NlKP+n3yqnh8FBRh+Nq0GlrkWl4MAH4Wz1todq/zU5+vr8eoCfxtOKQKr07OmjwJqBg6NI9ateWzDj8NP8Ov6JyKiYWkVJTJ9jpVQ//gb/AlylUJRrmj2TvdF9rJZSEVNwKnQ89HUMKdfbAhRku48wX77A+qhjcDZ4M5fccIitKFA6NLB32ULibYh2Pb4Mw8wiujgCns9xLbpmS6WaZIbfgR4yHCQ2IWDkVfBR5F/dLBiagn/CWYQF23+3cnp2wN0oW8wiXEanXAXVfRefPO8b1rGRn68KG/8b2yHGpGq1IhpV9AmBIJF2Ld99R7DV8HH0uh5kW09XZbnZw10csNdCEQffXtVnLRN7Ri6hvo0oEyr4W0/u8fRM/nxh9EpaICbm5gqgwoeX8BvC1b/3APEzkAAAAASUVORK5CYII=";
+  const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAnUlEQVR4nL3VQRJAMAwF0CTHsHAOd+C43ME5LFzj29SoKo1E/V2NeUlNG0SVwsU3RszZ5wN3Nni8AZUF2IWGoKeWmRt6ggGsZEyMi6fTODzRclp7tk85NHzzc8deNIq87RYlNFjydad7pAaqhvESVcEwoEUYRvSAh+t9N6NP5xiOTvdIWgkeNNr5Z0OIk+lmutKa/DzoSVGg8Guqlg1Da0c+L+gMvwAAAABJRU5ErkJggg==";
 
   let trayImage;
 
@@ -303,16 +388,8 @@ function createTray() {
 
   const _cfg = loadConfig();
   const isAutoStart = _cfg.autoStart || false;
-  const isPinned = _cfg.alwaysOnTop !== false;
 
-  function togglePin() {
-    const newVal = !mainWindow.isAlwaysOnTop();
-    mainWindow.setAlwaysOnTop(newVal);
-    saveConfig({ alwaysOnTop: newVal });
-    tray.setContextMenu(buildMenu(newVal));
-  }
-
-  function buildMenu(pinned) {
+  function buildMenu() {
     return Menu.buildFromTemplate([
       {
         label: t("显示/隐藏", "Show/Hide"),
@@ -320,12 +397,6 @@ function createTray() {
         click: toggleWindow,
       },
       { type: "separator" },
-      {
-        label: t("窗口置顶", "Always on Top"),
-        type: "checkbox",
-        checked: pinned,
-        click: togglePin,
-      },
       {
         label: t("开机自启", "Launch at Login"),
         type: "checkbox",
@@ -352,7 +423,7 @@ function createTray() {
     ]);
   }
 
-  const contextMenu = buildMenu(isPinned);
+  const contextMenu = buildMenu();
 
   tray.setContextMenu(contextMenu);
   tray.on("click", toggleWindow);
@@ -372,17 +443,26 @@ function registerShortcuts() {
   // 快速启动器
   globalShortcut.register("CommandOrControl+Space", toggleLauncher);
 
-  // 窗口置顶切换
-  globalShortcut.register("CommandOrControl+Shift+P", () => {
-    if (mainWindow) {
-      const newVal = !mainWindow.isAlwaysOnTop();
-      mainWindow.setAlwaysOnTop(newVal);
-      saveConfig({ alwaysOnTop: newVal });
-    }
-  });
+  // 窗口置顶已禁用（alwaysOnTop: false）
 }
 
 // ── IPC 处理 ────────────────────────────────────
+
+// ── 命令执行 ────────────────────────────────────
+
+ipcMain.handle("run-command", async (event, cmd) => {
+  const { execSync } = require("child_process");
+  try {
+    const result = execSync(`zhi ${cmd}`, {
+      encoding: "utf-8",
+      timeout: 60000,
+      maxBuffer: 1024 * 1024,
+    });
+    return { success: true, data: result.trim() };
+  } catch (e) {
+    return { success: false, data: `❌ ${e.message || e}` };
+  }
+});
 
 ipcMain.handle("launcher-hide", () => {
   if (launcherWindow) launcherWindow.hide();
@@ -399,6 +479,19 @@ ipcMain.handle("launcher-show-result", (event, result) => {
 
 ipcMain.handle("toggle-window", () => toggleWindow());
 ipcMain.handle("hide-window", () => {
+  if (mainWindow) {
+    fadeTo(0, 100);
+    setTimeout(() => {
+      mainWindow.hide();
+      if (floatBtn && !floatBtn.isDestroyed()) {
+        floatBtn.show();
+        floatBtn.setAlwaysOnTop(true, "screen-saver");
+      }
+    }, 100);
+  }
+});
+
+ipcMain.handle("hide-window-nofloat", () => {
   if (mainWindow) {
     fadeTo(0, 100);
     setTimeout(() => mainWindow.hide(), 100);
@@ -497,6 +590,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   stopPythonBackend();
+  if (floatBtn) { floatBtn.destroy(); floatBtn = null; }
   globalShortcut.unregisterAll();
 });
 

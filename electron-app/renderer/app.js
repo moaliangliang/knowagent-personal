@@ -1,9 +1,10 @@
 /**
  * 知行 ZhiXing Desktop — 渲染进程
- * 适配自 chrome-extension/content.js
+ * 通过 Electron IPC 直接执行命令，无需额外后端
  */
 
-const API_URL = "http://localhost:9511";
+
+
 
 // ── i18n ──────────────────────────────────────
 
@@ -27,7 +28,7 @@ if (_lang === "zh") {
     if (map[el.id]) el.textContent = map[el.id];
   });
   // 更新输入框 placeholder
-  document.getElementById("input-box").placeholder = "输入命令...";
+  document.getElementById("input-box").placeholder = "输入命令...\nShift+Enter 换行";
   document.getElementById("btn-hide").title = "隐藏";
   document.getElementById("btn-close").title = "关闭";
 }
@@ -166,56 +167,14 @@ document.querySelectorAll(".tab").forEach((tab) => {
   };
 });
 
-// ── WebSocket 连接 ────────────────────────────
+// ── 命令执行（IPC 直连主进程） ──────────────────
 
-let ws = null;
-let wsReconnectTimer = null;
-
-function connectWS() {
+async function runCommand(cmd) {
   try {
-    ws = new WebSocket("ws://localhost:9512");
-    ws.onopen = () => setStatus(true);
-    ws.onclose = () => {
-      setStatus(false);
-      ws = null;
-      wsReconnectTimer = setTimeout(connectWS, 3000);
-    };
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "result" || msg.type === "error") {
-          const wait = document.querySelector(".msg-wait");
-          if (wait) wait.remove();
-          addMsg(msg.data || "(空)", "bot");
-        }
-      } catch (err) {
-        addMsg("❌ 响应解析失败", "bot");
-      }
-      sendBtn.disabled = false;
-    };
-    ws.onerror = () => { ws?.close(); };
+    const result = await window.ka.runCommand(cmd);
+    return result;
   } catch (e) {
-    wsReconnectTimer = setTimeout(connectWS, 3000);
-  }
-}
-
-// ── HTTP API 回退 ────────────────────────────
-
-async function apiCall(payload) {
-  const resp = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return resp.json();
-}
-
-async function apiPing() {
-  try {
-    const data = await apiCall({ action: "ping" });
-    return data.type === "pong";
-  } catch (e) {
-    return false;
+    return { success: false, data: `❌ 执行失败: ${e.message}` };
   }
 }
 
@@ -299,27 +258,40 @@ async function sendMessage() {
   sendBtn.disabled = true;
   addMsg(_t("⏳ 处理中...", "⏳ Processing..."), "wait");
 
-  try {
-    const data = await apiCall({
-      action: "command",
-      params: { cmd: text, pageUrl: "", pageTitle: "ZhiXing Desktop" },
-    });
-    const wait = document.querySelector(".msg-wait");
-    if (wait) wait.remove();
-    addMsg(data.data || "(空)", "bot");
-    setStatus(true);
-  } catch (e) {
-    const wait = document.querySelector(".msg-wait");
-    if (wait) wait.remove();
-    addMsg(_t("❌ 连接服务器失败\n请确认 python3 server.py 已运行", "❌ Server offline\nRun: python3 server.py"), "bot");
-    setStatus(false);
+  // 截图类命令：先隐藏窗口，执行完再恢复
+  const isScreenshot = /截图|screenshot|看看|ocr/i.test(text);
+  if (isScreenshot) {
+    window.ka.hideNoFloat(); // 隐藏窗口，不显示 Z 按钮
+    await new Promise(r => setTimeout(r, 300)); // 等隐藏动画完成
+  }
+
+  const result = await runCommand(text);
+  const wait = document.querySelector(".msg-wait");
+  if (wait) wait.remove();
+  if (result.success) {
+    addMsg(result.data, "bot");
+  } else {
+    addMsg(result.data, "bot");
   }
   sendBtn.disabled = false;
+
+  // 截图后恢复窗口
+  if (isScreenshot) {
+    await new Promise(r => setTimeout(r, 500));
+    window.ka.toggle(); // 重新打开窗口
+  }
 }
 
 sendBtn.onclick = sendMessage;
 input.onkeydown = (e) => {
-  if (e.key === "Enter") sendMessage();
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+};
+input.oninput = () => {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 120) + "px";
 };
 
 // ── 帮助/清除 ─────────────────────────────────
@@ -405,13 +377,12 @@ sendMessage = async function() {
 async function loadTodos() {
   todoPanel.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">' + _t("加载中...", "Loading...") + '</div>';
   try {
-    // 同时加载待办和提醒事项
-    const [todoData, remData] = await Promise.all([
-      apiCall({ action: "command", params: { cmd: "待办列表" } }),
-      apiCall({ action: "command", params: { cmd: "提醒列表" } }).catch(() => ({ data: "" })),
+    const [todoResult, remResult] = await Promise.all([
+      runCommand("待办列表"),
+      runCommand("提醒列表").catch(() => ({ data: "" })),
     ]);
-    const text = todoData.data || "";
-    const remText = remData.data || "";
+    const text = todoResult.data || "";
+    const remText = remResult.data || "";
     let html =
       '<div style="display:flex;justify-content:space-between;padding:0 0 6px 0;font-size:12px;color:#666;"><span>📋 ' + _t("待办", "Tasks") + '</span></div>';
     const lines = text.split("\n").filter((l) => l.trim());
@@ -449,10 +420,10 @@ async function loadTodos() {
   }
 }
 
-// ── 连接检测 ──────────────────────────────────
+// ── 就绪检测 ──────────────────────────────────
 
-async function checkConnection() {
-  try { setStatus(await apiPing()); } catch (e) { setStatus(false); }
+function checkReady() {
+  setStatus(true); // IPC 直连，始终就绪
 }
 
 // ── Electron IPC ──────────────────────────────
@@ -471,7 +442,8 @@ window.ka.onLauncherResult((result) => {
 
 // ── 启动 ──────────────────────────────────────
 
-checkConnection();
+setStatus(true);
+checkReady();
 setInterval(checkConnection, 15000);
 addMsg(_t(
   "🤖 知行已启动\n\n支持 98+ 命令，试试: 状态 / 看看 / 帮助",
