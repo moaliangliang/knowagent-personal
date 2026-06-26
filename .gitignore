@@ -24,3 +24,5 @@ swift/timer_window
 .vscode/
 docs/screenshots/
 .github/
+electron-app/node_modules/
+chrome-extension/node_modules/

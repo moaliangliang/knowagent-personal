@@ -7,9 +7,11 @@
 """
 
 import asyncio
+import glob
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -579,69 +581,225 @@ def _clean_old_previews():
         pass
 
 
-def _play_youtube(keyword: str) -> str:
-    """通过 YouTube 播放完整歌曲（降级方案）"""
-    # 检查工具是否可用
+def _play_from_local_library(track_name: str, artist_name: str) -> str | None:
+    """从本地 Music 曲库搜索并播放歌曲"""
+    try:
+        script = f'''
+        tell application "Music"
+            set allTracks to every track of library playlist 1
+            set foundTrack to missing value
+            repeat with t in allTracks
+                set tn to name of t
+                set ta to artist of t
+                if tn contains "{track_name[:20]}" and (artist_name is "" or ta contains "{artist_name[:20]}") then
+                    set foundTrack to t
+                    exit repeat
+                end if
+            end repeat
+            if foundTrack is not missing value then
+                play foundTrack
+                return (name of foundTrack) & " — " & (artist of foundTrack)
+            else
+                -- 按歌手模糊搜索
+                repeat with t in allTracks
+                    set ta to artist of t
+                    if ta contains "{artist_name[:20]}" then
+                        set foundTrack to t
+                        exit repeat
+                    end if
+                end repeat
+                if foundTrack is not missing value then
+                    play foundTrack
+                    return (name of foundTrack) & " — " & (artist of foundTrack)
+                end if
+                return ""
+            end if
+        end tell'''
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True, text=True, timeout=10,
+        )
+        out = result.stdout.strip()
+        return out if out else None
+    except Exception:
+        return None
+
+
+def _open_in_music_app(track_url: str):
+    """在 Music App 中打开歌曲页面"""
+    try:
+        subprocess.Popen(
+            ["osascript", "-e",
+             f'tell application "Music" to activate'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        subprocess.Popen(
+            ["open", track_url],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def _play_from_netease(keyword: str) -> str | None:
+    """从网易云音乐下载并播放完整歌曲（通过 yt-dlp）"""
     if not shutil.which("yt-dlp"):
-        return "❌ 需要 yt-dlp:\n  brew install yt-dlp ffmpeg"
-    if not shutil.which("ffplay"):
-        return "❌ 需要 ffmpeg:\n  brew install ffmpeg"
+        return None
 
     try:
-        # 用 yt-dlp 搜索最佳结果
-        search_result = subprocess.run(
-            ["yt-dlp", "--print", "%(id)s|%(title)s|%(uploader)s|%(duration)s",
-             "--default-search", "ytsearch",
-             "--playlist-items", "1",
-             "--socket-timeout", "15",
-             f"ytsearch:{keyword} 歌曲"],
-            capture_output=True, text=True, timeout=30,
+        # 搜索歌曲 ID
+        search_url = (
+            f"https://music.163.com/api/search/get"
+            f"?type=1&s={urllib.parse.quote(keyword, safe='')}&limit=3"
         )
-        if search_result.returncode != 0 or not search_result.stdout.strip():
-            return f"❌ 未找到「{keyword}」的相关视频"
-
-        parts = search_result.stdout.strip().split("|")
-        if len(parts) < 2:
-            return f"❌ 未找到「{keyword}」的相关视频"
-
-        vid = parts[0]
-        title = parts[1]
-        artist = parts[2] if len(parts) > 2 else "YouTube"
-
-        # 获取最佳音频流 URL
-        result = subprocess.run(
-            ["yt-dlp", "-f", "bestaudio[ext=m4a]/bestaudio",
-             "--get-url",
-             "--socket-timeout", "15",
-             f"https://www.youtube.com/watch?v={vid}"],
-            capture_output=True, text=True, timeout=30,
+        req = urllib.request.Request(
+            search_url,
+            headers={"Referer": "https://music.163.com",
+                     "User-Agent": "Mozilla/5.0"}
         )
-        audio_url = result.stdout.strip()
-        if not audio_url:
-            return f"❌ 无法获取「{title}」的音频流"
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        data = json.loads(raw)
+        songs = data.get("result", {}).get("songs", [])
+        if not songs:
+            return None
 
-        # 停止已有播放
+        s = songs[0]
+        song_id = s["id"]
+        title = s["name"]
+        artist = s["artists"][0]["name"] if s.get("artists") else "未知"
+
         _stop_youtube_playback()
 
-        # 启动 ffplay 播放（后台，完整歌曲）
+        # 通过 yt-dlp 下载并播放
+        tmp = f"/tmp/zhixing_music_{int(time.time())}.%(ext)s"
+        dl = subprocess.run(
+            ["yt-dlp", "-f", "bestaudio", "--extract-audio",
+             "--audio-format", "mp3", "--output", tmp,
+             "--socket-timeout", "15", "--no-playlist",
+             f"https://music.163.com/song?id={song_id}"],
+            capture_output=True, text=True, timeout=60,
+        )
+        if dl.returncode != 0:
+            return None
+
+        # 找下载的 mp3
+        mp3 = None
+        for f in os.listdir("/tmp"):
+            if f.startswith("zhixing_music_") and f.endswith(".mp3"):
+                fp = os.path.join("/tmp", f)
+                if time.time() - os.path.getmtime(fp) < 15:
+                    mp3 = fp
+                    break
+
+        if not mp3 or not os.path.getsize(mp3) > 10000:
+            return None
+
         proc = subprocess.Popen(
-            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet",
-             "-fflags", "nobuffer", audio_url],
+            ["afplay", mp3],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
         _YOUTUBE_PIDS.append(proc.pid)
+        return f"{title} — {artist}"
 
+    except Exception:
+        return None
+
+
+def _play_from_youtube(keyword: str) -> str | None:
+    """从 YouTube 下载并播放完整歌曲"""
+    if not shutil.which("yt-dlp"):
+        return None
+
+    try:
+        # 快速检测 YouTube 可用性
+        check = subprocess.run(
+            ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+             "--connect-timeout", "5", "https://www.youtube.com"],
+            capture_output=True, text=True, timeout=8,
+        )
+        if check.stdout.strip() != "200":
+            return None
+
+        # 搜索
+        search = subprocess.run(
+            ["yt-dlp", "--print", "%(title)s|%(uploader)s",
+             "--default-search", "ytsearch",
+             "--playlist-items", "1",
+             "--socket-timeout", "10",
+             f"ytsearch:{keyword} audio"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if search.returncode != 0 or not search.stdout.strip():
+            return None
+
+        lines = search.stdout.strip().split("|")
+        title, artist = lines[0], lines[1] if len(lines) > 1 else "YouTube"
+
+        _stop_youtube_playback()
+
+        # 下载为 mp3
+        tmp = f"/tmp/zhixing_music_{int(time.time())}.%(ext)s"
+        dl = subprocess.run(
+            ["yt-dlp", "-f", "bestaudio", "--extract-audio",
+             "--audio-format", "mp3", "--output", tmp,
+             "--socket-timeout", "15", "--no-playlist",
+             f"ytsearch:{keyword} audio"],
+            capture_output=True, text=True, timeout=60,
+        )
+        if dl.returncode != 0:
+            return None
+
+        # 找下载的文件
+        mp3 = None
+        for f in os.listdir("/tmp"):
+            if f.startswith("zhixing_music_") and f.endswith(".mp3"):
+                fp = os.path.join("/tmp", f)
+                if time.time() - os.path.getmtime(fp) < 15:
+                    mp3 = fp
+                    break
+
+        if not mp3 or not os.path.getsize(mp3) > 10000:
+            return None
+
+        proc = subprocess.Popen(
+            ["afplay", mp3],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        _YOUTUBE_PIDS.append(proc.pid)
+        return f"{title} — {artist}"
+
+    except Exception:
+        return None
+
+
+def _play_youtube(keyword: str) -> str:
+    """完整歌曲播放（多引擎：网易云 → YouTube → 提示）"""
+    _stop_youtube_playback()
+
+    # 1. 网易云音乐（中国大陆可用）
+    result = _play_from_netease(keyword)
+    if result:
         return (
-            f"🎵 正在完整播放: {title} — {artist}\n"
-            f"💿 来源: YouTube\n"
-            f"\x1b[2m输入 music_stop 停止播放 | music_volume level=50 调整音量\x1b[0m"
+            f"🎵 正在完整播放: {result}\n"
+            f"💿 来源: 网易云音乐\n"
+            f"\x1b[2m输入 music_stop 停止播放\x1b[0m"
         )
 
-    except subprocess.TimeoutExpired:
-        return f"❌ 搜索超时，请检查网络连接"
-    except Exception as e:
-        return f"❌ 播放失败: {e}"
+    # 2. YouTube（需翻墙）
+    result = _play_from_youtube(keyword)
+    if result:
+        return (
+            f"🎵 正在完整播放: {result}\n"
+            f"💿 来源: YouTube\n"
+            f"\x1b[2m输入 music_stop 停止播放\x1b[0m"
+        )
+
+    return "❌ 无法播放: 本地无此歌曲，且网络音乐源不可用"
 
 
 def _stop_youtube_playback():
@@ -677,63 +835,60 @@ def cmd_music_stop(params: dict) -> str:
 
 
 def cmd_music_search_online(params: dict) -> str:
-    """搜索歌曲并播放完整版（Apple Music / YouTube 双引擎）"""
+    """搜索歌曲并播放完整版（本地曲库 → YouTube）"""
     keyword = params.get("keyword", "")
     if not keyword:
         return "❌ 需要 keyword 参数"
 
-    # 清理过期临时文件
     _clean_old_previews()
+    first_result = None
+    songs_str = ""
 
+    # ── 1. 搜索 iTunes Store（获取歌曲元数据） ──
     try:
-        # ── 1. 搜索 iTunes Store ──
         url = f"https://itunes.apple.com/search?term={urllib.parse.quote(keyword)}&country=cn&media=music&limit=10"
         with urllib.request.urlopen(url, timeout=10) as resp:
             data = json.loads(resp.read())
         results = data.get("results", [])
-        if not results:
-            # 降级到 YouTube
-            return _play_youtube(keyword)
+        if results:
+            first_result = results[0]
+            songs_str = "\n".join(
+                f"  {i+1}. {r['trackName']} — {r['artistName']}"
+                for i, r in enumerate(results[:5])
+            )
+    except Exception:
+        pass  # 搜索失败不影响本地曲库播放
 
-        first = results[0]
-        songs = "\n".join(f"  {i+1}. {r['trackName']} — {r['artistName']}"
-                         for i, r in enumerate(results[:5]))
+    track_name = first_result['trackName'] if first_result else keyword
+    artist_name = first_result['artistName'] if first_result else ""
 
-        # ── 2. 尝试 Apple Music 完整播放 ──
-        track_id = first["trackId"]
-        track_name = first['trackName']
-        artist_name = first['artistName']
+    # ── 2. 优先：本地 Music 曲库直接播放 ──
+    local_result = _play_from_local_library(track_name, artist_name)
+    if local_result:
+        result = f"🎵 正在播放: {local_result}\n💿 来源: 本地曲库\n"
+        if first_result:
+            result += f"更多结果:\n{songs_str}\n"
+        return result + "\x1b[2m输入 music_stop 停止播放\x1b[0m"
 
-        ascript = f'''
-        tell application "Music"
-            activate
-            open location "https://music.apple.com/cn/song/{track_id}"
-            delay 2
-        end tell
-        tell application "System Events"
-            tell process "Music"
-                set frontmost to true
-                delay 1
-                key code 49
-            end tell
-        end tell'''
+    # ── 3. 降级：YouTube 流式播放 ──
+    yt_result = _play_youtube(keyword)
+    if "正在完整播放" in yt_result:
+        return yt_result
 
-        code = subprocess.run(["osascript", "-e", ascript],
-                              capture_output=True, timeout=15).returncode
-
-        if code == 0:
+    # ── 4. 最终：在 Music App 中打开（用户手动点播放） ──
+    if first_result:
+        track_url = first_result.get("trackViewUrl", "")
+        if track_url:
+            _open_in_music_app(track_url)
             return (
-                f"🎵 正在播放: {track_name} — {artist_name}\n"
-                f"💿 来源: Apple Music\n"
-                f"热门结果:\n{songs}\n"
-                "\x1b[2m输入 music_stop 停止播放\x1b[0m"
+                f"🎵 已打开: {track_name} — {artist_name}\n"
+                f"📱 请在 Music App 中点击「播放」收听完整版\n"
+                f"（需 Apple Music 订阅或本地已有该歌曲）\n"
+                f"热门结果:\n{songs_str}"
             )
 
-        # ── 3. 降级到 YouTube ──
-        return _play_youtube(keyword)
-
-    except Exception as e:
-        return _play_youtube(keyword)
+    # 全都失败
+    return _play_youtube(keyword)
 
 
 
