@@ -89,14 +89,24 @@ view.addSubview(opacityValLabel)
 
 // ── 按钮 ──
 let pauseBtn = NSButton(title: "⏸ 暂停", target: nil, action: nil)
-pauseBtn.bezelStyle = .rounded
-pauseBtn.font = NSFont.systemFont(ofSize: fontSize(12))
+pauseBtn.bezelStyle = .inline
+let pauseAttr = NSAttributedString(string: "⏸ 暂停", attributes: [
+    .font: NSFont.systemFont(ofSize: fontSize(12)),
+    .foregroundColor: NSColor.white,
+])
+pauseBtn.attributedTitle = pauseAttr
+pauseBtn.bezelStyle = .inline
 pauseBtn.autoresizingMask = [.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 pauseBtn.frame = CGRect(x: pctX(10), y: pctY(6), width: pctX(37), height: pctY(13))
 view.addSubview(pauseBtn)
 
-let cancelBtn = NSButton(title: "✕ 取消", target: nil, action: nil)
-cancelBtn.bezelStyle = .rounded
+let cancelAttr = NSAttributedString(string: "✕ 取消", attributes: [
+    .font: NSFont.systemFont(ofSize: fontSize(12)),
+    .foregroundColor: NSColor.white,
+])
+let cancelBtn = NSButton(title: "", target: nil, action: nil)
+cancelBtn.attributedTitle = cancelAttr
+cancelBtn.bezelStyle = .inline
 cancelBtn.font = NSFont.systemFont(ofSize: fontSize(12))
 cancelBtn.autoresizingMask = [.width, .minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
 cancelBtn.frame = CGRect(x: pctX(53), y: pctY(6), width: pctX(37), height: pctY(13))
