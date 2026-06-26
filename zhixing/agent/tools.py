@@ -761,16 +761,28 @@ def _open_in_music_app(track_url: str):
         pass
 
 
-def _play_from_netease(keyword: str) -> str | None:
-    """从网易云音乐下载并播放完整歌曲（通过 yt-dlp）"""
+def _play_from_netease(keyword: str, artist: str = "") -> str | None:
+    """从网易云音乐下载并播放完整歌曲（通过 yt-dlp）
+
+    Args:
+        keyword: 搜索关键词
+        artist: 歌手名（可选，用于筛选结果）
+    """
     if not shutil.which("yt-dlp"):
         return None
 
     try:
-        # 搜索歌曲 ID
+        # 清理关键词：去掉"的歌""的歌曲"等后缀
+        clean = keyword
+        for suffix in ["的歌", "的歌曲", "的歌儿", "音乐"]:
+            if clean.endswith(suffix):
+                clean = clean[:-len(suffix)].strip()
+                break
+
+        # 搜索歌曲
         search_url = (
             f"https://music.163.com/api/search/get"
-            f"?type=1&s={urllib.parse.quote(keyword, safe='')}&limit=3"
+            f"?type=1&s={urllib.parse.quote(clean, safe='')}&limit=5"
         )
         req = urllib.request.Request(
             search_url,
@@ -786,7 +798,19 @@ def _play_from_netease(keyword: str) -> str | None:
         if not songs:
             return None
 
-        s = songs[0]
+        # 按歌手筛选：优先匹配指定歌手
+        matched = None
+        if artist:
+            for s in songs:
+                artists_list = s.get("artists", [])
+                for a in artists_list:
+                    if artist.lower() in a.get("name", "").lower():
+                        matched = s
+                        break
+                if matched:
+                    break
+
+        s = matched or songs[0]
         song_id = s["id"]
         title = s["name"]
         artist = s["artists"][0]["name"] if s.get("artists") else "未知"
@@ -897,12 +921,12 @@ def _play_from_youtube(keyword: str) -> str | None:
         return None
 
 
-def _play_youtube(keyword: str) -> str:
+def _play_youtube(keyword: str, artist: str = "") -> str:
     """完整歌曲播放（多引擎：网易云 → YouTube → 提示）"""
     _stop_youtube_playback()
 
     # 1. 网易云音乐（中国大陆可用）
-    result = _play_from_netease(keyword)
+    result = _play_from_netease(keyword, artist)
     if result:
         return (
             f"🎵 正在完整播放: {result}\n"
@@ -991,7 +1015,7 @@ def cmd_music_search_online(params: dict) -> str:
         return result + "\x1b[2m输入 music_stop 停止播放\x1b[0m"
 
     # ── 3. 降级：YouTube 流式播放 ──
-    yt_result = _play_youtube(keyword)
+    yt_result = _play_youtube(keyword, artist_name)
     if "正在完整播放" in yt_result:
         return yt_result
 
