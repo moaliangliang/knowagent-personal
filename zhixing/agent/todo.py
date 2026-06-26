@@ -394,3 +394,57 @@ def cmd_todo_delete(params: dict) -> str:
 def cmd_todo_reminders(params: dict) -> str:
     """列出 macOS 提醒事项。"""
     return TodoManager.list_reminders()
+
+
+# ── 命令注册 ──────────────────────────────────────────
+
+COMMANDS: dict = {
+    "todo_add": cmd_todo_add,
+    "todo_list": cmd_todo_list,
+    "todo_done": cmd_todo_done,
+    "todo_undo": cmd_todo_undo,
+    "todo_delete": cmd_todo_delete,
+    "todo_reminders": cmd_todo_reminders,
+}
+
+TOOL_SCHEMAS: dict = {
+    "todo_add": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "事项内容"},
+            "priority": {"type": "string", "description": "优先级 high/medium/low", "enum": ["high", "medium", "low"]},
+            "category": {"type": "string", "description": "分类，如 work/study/life"},
+            "due_date": {"type": "string", "description": "截止日期 YYYY-MM-DD"},
+        },
+        "required": ["title"],
+    },
+    "todo_list": {
+        "type": "object",
+        "properties": {
+            "category": {"type": "string", "description": "分类过滤"},
+            "include_done": {"type": "string", "description": "是否包含已完成"},
+        },
+    },
+    "todo_done": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "description": "事项编号"},
+        },
+        "required": ["id"],
+    },
+    "todo_undo": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "description": "事项编号"},
+        },
+        "required": ["id"],
+    },
+    "todo_delete": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "description": "事项编号（0=删除所有待办）"},
+        },
+        "required": ["id"],
+    },
+    "todo_reminders": {"type": "object", "properties": {}},
+}

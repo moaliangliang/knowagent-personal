@@ -28,7 +28,7 @@ def get_system_lang() -> str:
 # ── 英文帮助文本 ─────────────────────────────────────────
 
 HELP_EN: dict = {
-    "title": "📖 Mac Agent Personal Help",
+    "title": "📖 Flow Help",
     "subtitle": "83 commands · Harness-powered · 5 security modes",
     "natural_title": "Natural Language Examples",
     "harness_title": "🛡️ Harness Security Layer",
@@ -85,7 +85,7 @@ HELP_EN: dict = {
 # ── 中文帮助文本 ─────────────────────────────────────────
 
 HELP_ZH: dict = {
-    "title": "📖 Mac Agent Personal 使用帮助",
+    "title": "📖 知行使用帮助",
     "subtitle": "83 个命令 · Harness 安全架构 · 5 种权限模式",
     "natural_title": "自然语言示例",
     "harness_title": "🛡️ Harness 安全层",
@@ -141,20 +141,84 @@ HELP_ZH: dict = {
 }
 
 
+# ── 命令分类规则（前缀匹配） ─────────────────────────────
+
+_CATEGORY_RULES_ZH: list[tuple[str, list[str]]] = [
+    ("🔧 系统控制",     ["display_", "system_", "screensaver", "focus_mode", "battery_", "wifi_", "lock_"]),
+    ("💬 企业通讯",     ["wecom", "feishu", "dingtalk", "broadcast"]),
+    ("🌐 网络工具",     ["my_ip", "speedtest", "http_", "download", "whois", "ping", "port_"]),
+    ("📁 文件管理",     ["file_", "compress", "extract", "trash", "duplicate_", "convert_"]),
+    ("💻 开发工具",     ["brew", "process", "docker"]),
+    ("🎬 媒体处理",     ["screen_record", "audio_record", "video_", "ocr_", "screenshot"]),
+    ("📅 日常效率",     ["timer", "clipboard_", "translate", "shortcut", "notification", "calendar", "reminder_"]),
+    ("🤖 AI 增强",     ["chat", "summarize", "code_review", "image_gen", "knowledge_"]),
+    ("📊 监控 & VPN",  ["disk_", "battery_health", "sensor_", "vpn_"]),
+    ("🎵 音乐 & 邮件", ["music_", "mail_"]),
+    ("⌨️ UI & 键盘",  ["ui_", "keyboard_", "clipboard_read", "clipboard_write", "speak", "voice_", "contacts_", "notes_", "workflow_", "open_"]),
+    ("🔐 安全 & 工具", ["clipboard_monitor_", "credential", "config"]),
+    ("📋 待办事项",    ["todo_"]),
+    ("⚡ 自动化",      ["auto_"]),
+    ("🔌 插件 & Skill", ["skill"]),
+]
+
+_CATEGORY_RULES_EN: list[tuple[str, list[str]]] = [
+    ("🔧 System",       ["display_", "system_", "screensaver", "focus_mode", "battery_", "wifi_", "lock_"]),
+    ("💬 Messaging",    ["wecom", "feishu", "dingtalk", "broadcast"]),
+    ("🌐 Network",      ["my_ip", "speedtest", "http_", "download", "whois", "ping", "port_"]),
+    ("📁 Files",        ["file_", "compress", "extract", "trash", "duplicate_", "convert_"]),
+    ("💻 Dev",          ["brew", "process", "docker"]),
+    ("🎬 Media",        ["screen_record", "audio_record", "video_", "ocr_", "screenshot"]),
+    ("📅 Daily",        ["timer", "clipboard_", "translate", "shortcut", "notification", "calendar", "reminder_"]),
+    ("🤖 AI",           ["chat", "summarize", "code_review", "image_gen", "knowledge_"]),
+    ("📊 Monitor",      ["disk_", "battery_health", "sensor_", "vpn_"]),
+    ("🎵 Music & Mail", ["music_", "mail_"]),
+    ("⌨️ UI & Keys",   ["ui_", "keyboard_", "clipboard_read", "clipboard_write", "speak", "voice_", "contacts_", "notes_", "workflow_", "open_"]),
+    ("🔐 Security",     ["clipboard_monitor_", "credential", "config"]),
+    ("📋 Todo",         ["todo_"]),
+    ("⚡ Automation",   ["auto_"]),
+    ("🔌 Plugin",       ["skill"]),
+]
+
+
+def _build_categories() -> dict[str, list[str]]:
+    """从 COMMANDS 动态构建分类命令列表。"""
+    try:
+        from zhixing.agent.tools import COMMANDS
+        cmds = sorted(COMMANDS.keys())
+
+        # 中文分类
+        cats_zh = {}
+        for cat_name, prefixes in _CATEGORY_RULES_ZH:
+            matched = []
+            for c in list(cmds):
+                for p in prefixes:
+                    if c == p or c.startswith(p):
+                        matched.append(c)
+                        cmds.remove(c)
+                        break
+            if matched:
+                cats_zh[cat_name] = matched
+        # 剩余未分类
+        if cmds:
+            cats_zh["🔧 其他"] = cmds
+
+        return cats_zh
+    except Exception:
+        return {}
+
+
 def get_help_text(lang: str | None = None) -> dict:
-    """获取对应语言的帮助文本（自动注入动态命令计数）。"""
+    """获取对应语言的帮助文本（自动注入动态命令）。"""
     if lang is None:
         lang = get_system_lang()
-    text = HELP_ZH if lang == "zh" else HELP_EN
+    is_zh = lang == "zh"
+    text = dict(HELP_ZH if is_zh else HELP_EN)
 
-    # 从注册表动态注入命令计数
-    try:
-        from zhixing.harness.registry import TOOL_REGISTRY
-        count = TOOL_REGISTRY.count
-        if count > 0:
-            text = dict(text)  # 不修改全局
-            text["subtitle"] = text["subtitle"].replace("83 ", f"{count} ")
-    except Exception:
-        pass
+    # 动态构建分类命令列表
+    cats = _build_categories()
+    if cats:
+        text["ex_categories"] = cats
+        total = sum(len(v) for v in cats.values())
+        text["subtitle"] = text["subtitle"].replace("83 ", f"{total} ")
 
     return text
