@@ -60,8 +60,9 @@ const $wf = (id) => document.getElementById(id);
 // ── 预设工作流 ────────────────────────────────────
 
 const WORKFLOW_PRESETS = [
+  // ── 系统类 ──
   {
-    name: { zh: "系统报告", en: "System Report" },
+    name: { zh: "📊 系统报告", en: "System Report" },
     icon: "📊",
     steps: [
       { type: "cmd_call", config: { cmd: "system_status", desc: "检查系统" } },
@@ -71,7 +72,73 @@ const WORKFLOW_PRESETS = [
     ],
   },
   {
-    name: { zh: "音乐时光", en: "Music Time" },
+    name: { zh: "🔋 健康检查", en: "Health Check" },
+    icon: "🔋",
+    steps: [
+      { type: "cmd_call", config: { cmd: "battery_health", desc: "电池健康" } },
+      { type: "cmd_call", config: { cmd: "sensor_temp", desc: "CPU温度" } },
+      { type: "cmd_call", config: { cmd: "disk_monitor", desc: "磁盘空间" } },
+      { type: "cmd_call", config: { cmd: "system_status", desc: "系统状态" } },
+    ],
+  },
+  {
+    name: { zh: "🔒 安全检查", en: "Security Check" },
+    icon: "🔒",
+    steps: [
+      { type: "cmd_call", config: { cmd: "wifi_status", desc: "WiFi安全" } },
+      { type: "cmd_call", config: { cmd: "vpn_status", desc: "VPN状态" } },
+      { type: "cmd_call", config: { cmd: "my_ip", desc: "公网IP" } },
+      { type: "cmd_call", config: { cmd: "process", desc: "进程检查" } },
+    ],
+  },
+  {
+    name: { zh: "🧹 磁盘清理", en: "Disk Cleanup" },
+    icon: "🧹",
+    steps: [
+      { type: "cmd_call", config: { cmd: "disk_monitor", desc: "检查磁盘" } },
+      { type: "cmd_call", config: { cmd: "duplicate_finder", desc: "查找重复文件" } },
+      { type: "cmd_call", config: { cmd: "screenshot", desc: "截图留念" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "磁盘检查完成", desc: "通知" } },
+    ],
+  },
+
+  // ── 办公效率 ──
+  {
+    name: { zh: "☀️ 晨间检查", en: "Morning Routine" },
+    icon: "☀️",
+    steps: [
+      { type: "cmd_call", config: { cmd: "system_status", desc: "系统状态" } },
+      { type: "cmd_call", config: { cmd: "calendar", desc: "今日日程" } },
+      { type: "cmd_call", config: { cmd: "weather", desc: "今日天气" } },
+      { type: "cmd_call", config: { cmd: "todo_list", desc: "待办事项" } },
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "轻音乐", desc: "背景音乐" } },
+    ],
+  },
+  {
+    name: { zh: "📧 邮件办公", en: "Mail Time" },
+    icon: "📧",
+    steps: [
+      { type: "cmd_call", config: { cmd: "mail_master", desc: "读取邮件" } },
+      { type: "cmd_call", config: { cmd: "calendar", desc: "查看日程" } },
+      { type: "cmd_call", config: { cmd: "todo_list", desc: "待办事项" } },
+      { type: "cmd_call", config: { cmd: "clipboard_history", desc: "剪贴板历史" } },
+    ],
+  },
+  {
+    name: { zh: "🏠 远程办公", en: "Remote Work" },
+    icon: "🏠",
+    steps: [
+      { type: "cmd_call", config: { cmd: "vpn_status", desc: "连接VPN" } },
+      { type: "cmd_call", config: { cmd: "my_ip", desc: "确认IP" } },
+      { type: "cmd_call", config: { cmd: "speedtest", desc: "网络测速" } },
+      { type: "cmd_call", config: { cmd: "wifi_status", desc: "WiFi信号" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "远程办公已就绪", desc: "通知" } },
+    ],
+  },
+
+  // ── 娱乐休闲 ──
+  {
+    name: { zh: "🎵 音乐时光", en: "Music Time" },
     icon: "🎵",
     steps: [
       { type: "cmd_call", config: { cmd: "music_search_online", keyword: "经典", desc: "播放经典" } },
@@ -79,7 +146,16 @@ const WORKFLOW_PRESETS = [
     ],
   },
   {
-    name: { zh: "摸鱼预警", en: "Boss Alert" },
+    name: { zh: "🎤 歌手精选", en: "Artist Picks" },
+    icon: "🎤",
+    steps: [
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "周杰伦", desc: "周杰伦" } },
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "王力宏", desc: "王力宏" } },
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "林俊杰", desc: "林俊杰" } },
+    ],
+  },
+  {
+    name: { zh: "🐟 摸鱼预警", en: "Boss Alert" },
     icon: "🐟",
     steps: [
       { type: "cmd_call", config: { cmd: "screenshot", desc: "截屏" } },
@@ -87,11 +163,126 @@ const WORKFLOW_PRESETS = [
     ],
   },
   {
-    name: { zh: "王力宏", en: "Leehom Wang" },
-    icon: "🎤",
+    name: { zh: "🍅 番茄工作法", en: "Pomodoro" },
+    icon: "🍅",
     steps: [
-      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "王力宏", desc: "搜索并播放王力宏" } },
-      { type: "cmd_call", config: { cmd: "notification", text: "正在播放王力宏的歌曲", desc: "通知" } },
+      { type: "cmd_call", config: { cmd: "timer", desc: "开始25分钟" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "番茄钟完成!休息5分钟", desc: "休息提醒" } },
+    ],
+  },
+
+  // ── 工具类 ──
+  {
+    name: { zh: "🌐 网络诊断", en: "Network Diag" },
+    icon: "🌐",
+    steps: [
+      { type: "cmd_call", config: { cmd: "my_ip", desc: "公网IP" } },
+      { type: "cmd_call", config: { cmd: "wifi_status", desc: "WiFi状态" } },
+      { type: "cmd_call", config: { cmd: "speedtest", desc: "网速测试" } },
+      { type: "cmd_call", config: { cmd: "ping", desc: "延迟测试" } },
+    ],
+  },
+  {
+    name: { zh: "💻 开发环境", en: "Dev Env" },
+    icon: "💻",
+    steps: [
+      { type: "cmd_call", config: { cmd: "process", desc: "运行进程" } },
+      { type: "cmd_call", config: { cmd: "docker", desc: "Docker状态" } },
+      { type: "cmd_call", config: { cmd: "brew", desc: "Homebrew" } },
+      { type: "cmd_call", config: { cmd: "disk_monitor", desc: "磁盘空间" } },
+    ],
+  },
+  {
+    name: { zh: "👋 下班准备", en: "Shutdown" },
+    icon: "👋",
+    steps: [
+      { type: "cmd_call", config: { cmd: "todo_list", desc: "待办检查" } },
+      { type: "cmd_call", config: { cmd: "clipboard_history", desc: "保存剪贴板" } },
+      { type: "cmd_call", config: { cmd: "system_volume", desc: "静音" } },
+      { type: "cmd_call", config: { cmd: "music_stop", desc: "停止音乐" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "下班了，明天见!", desc: "下班提醒" } },
+    ],
+  },
+
+  // ── 全组件演示 ──
+  // 以下预设覆盖所有 STEP_TYPES 类型
+  {
+    name: { zh: "🌐 网页自动导航", en: "Web Nav" },
+    icon: "🌐",
+    steps: [
+      { type: "navigate", config: { value: "https://www.apple.com", desc: "打开Apple" } },
+      { type: "wait", config: { seconds: 3, desc: "等待加载" } },
+      { type: "screenshot", config: { desc: "截图" } },
+      { type: "assert", config: { target: "Apple", desc: "验证页面" } },
+    ],
+  },
+  {
+    name: { zh: "👆 表单自动填写", en: "Form Fill" },
+    icon: "👆",
+    steps: [
+      { type: "navigate", config: { value: "https://www.google.com", desc: "打开Google" } },
+      { type: "wait", config: { seconds: 2, desc: "等待" } },
+      { type: "type", config: { value: "知行 AI 助手", desc: "输入搜索词" } },
+      { type: "screenshot", config: { desc: "截图结果" } },
+    ],
+  },
+  {
+    name: { zh: "⏰ 定时任务示例", en: "Scheduled Task" },
+    icon: "⏰",
+    steps: [
+      { type: "trigger_schedule", config: { cron: "0 9 * * 1-5", desc: "工作日9点触发" } },
+      { type: "cmd_call", config: { cmd: "system_status", desc: "执行检查" } },
+      { type: "cmd_call", config: { cmd: "calendar", desc: "查看日程" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "早上好! 新的一天开始了", desc: "发送通知" } },
+    ],
+  },
+  {
+    name: { zh: "🔀 条件判断示例", en: "Condition Demo" },
+    icon: "🔀",
+    steps: [
+      { type: "condition", config: { condition_type: "text_exists", condition_value: "示例文字", desc: "判断文字是否存在" } },
+      { type: "cmd_call", config: { cmd: "system_status", desc: "条件满足时执行" } },
+      { type: "wait", config: { seconds: 1, desc: "等待" } },
+      { type: "screenshot", config: { desc: "截图结果" } },
+    ],
+  },
+  {
+    name: { zh: "📦 数据提取示例", en: "Extract Demo" },
+    icon: "📦",
+    steps: [
+      { type: "navigate", config: { value: "https://www.apple.com", desc: "打开网页" } },
+      { type: "wait", config: { seconds: 3, desc: "等待加载" } },
+      { type: "extract", config: { selector: "h1", var_name: "pageTitle", desc: "提取标题" } },
+      { type: "variable", config: { var_name: "result", var_value: "{pageTitle}", desc: "保存结果" } },
+      { type: "screenshot", config: { desc: "截图" } },
+    ],
+  },
+  {
+    name: { zh: "👁️ 等待元素出现", en: "Wait Until" },
+    icon: "👁️",
+    steps: [
+      { type: "navigate", config: { value: "https://www.apple.com", desc: "打开页面" } },
+      { type: "wait_until", config: { target: "Apple", timeout: "10", desc: "等待Apple出现" } },
+      { type: "screenshot", config: { desc: "截图" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "页面已加载完成", desc: "通知" } },
+    ],
+  },
+  {
+    name: { zh: "🔄 间隔监控", en: "Interval Monitor" },
+    icon: "🔄",
+    steps: [
+      { type: "trigger_interval", config: { seconds: 60, max_runs: 5, desc: "每60秒执行" } },
+      { type: "cmd_call", config: { cmd: "system_status", desc: "监控系统" } },
+      { type: "cmd_call", config: { cmd: "disk_monitor", desc: "检查磁盘" } },
+    ],
+  },
+  {
+    name: { zh: "🔗 Webhook 触发", en: "Webhook Demo" },
+    icon: "🔗",
+    steps: [
+      { type: "trigger_webhook", config: { webhook_url: "/webhook/run", desc: "等待Webhook调用" } },
+      { type: "cmd_call", config: { cmd: "my_ip", desc: "获取IP" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "Webhook 已触发", desc: "通知" } },
     ],
   },
 ];
@@ -535,20 +726,34 @@ async function runWorkflow() {
     renderSteps();
     // 构造命令
     let cmd = "";
-    if (s.config.isCmd) {
-      cmd = s.config.cmd || "";
-      if (s.config.keyword) cmd += " keyword=" + s.config.keyword;
-      if (s.config.text) cmd += ' text="' + s.config.text + '"';
+    const type = s.type;
+    const cfg = s.config || {};
+
+    if (type === "cmd_call" || cfg.isCmd) {
+      cmd = cfg.cmd || "";
+      if (cfg.keyword) cmd += " keyword=" + cfg.keyword;
+      if (cfg.text) cmd += ' text="' + cfg.text + '"';
+      if (cfg.level) cmd += " level=" + cfg.level;
+      if (cfg.minutes) cmd += " minutes=" + cfg.minutes;
+      if (cfg.name) cmd += " name=" + cfg.name;
+    } else if (type === "navigate") {
+      cmd = "open_url url=" + (cfg.value || "");
+    } else if (type === "click") {
+      cmd = "auto_click text=" + (cfg.target || "");
+    } else if (type === "fill") {
+      cmd = "auto_type label=" + (cfg.target || "") + " value=" + (cfg.value || "");
+    } else if (type === "type") {
+      cmd = "keyboard_type text=" + (cfg.value || "");
+    } else if (type === "wait") {
+      cmd = "timer minutes=" + (parseInt(cfg.seconds) / 60 || 0.1);
+    } else if (type === "screenshot") {
+      cmd = "screenshot";
+    } else if (type === "assert") {
+      cmd = "auto_find text=" + (cfg.target || "");
+    } else if (type === "variable") {
+      cmd = "system_status";
     } else {
-      const type = s.type;
-      if (type === "navigate") cmd = "open_url url=" + (s.config.value || "");
-      else if (type === "click") cmd = "auto_click text=" + (s.config.target || "");
-      else if (type === "fill") cmd = "auto_type label=" + (s.config.target || "") + " value=" + (s.config.value || "");
-      else if (type === "type") cmd = "keyboard_type text=" + (s.config.value || "");
-      else if (type === "wait") cmd = "timer minutes=" + (parseInt(s.config.seconds) / 60 || 0.1);
-      else if (type === "screenshot") cmd = "screenshot";
-      else if (type === "assert") cmd = "auto_find text=" + (s.config.target || "");
-      else cmd = "system_status";
+      cmd = "system_status";
     }
     if (!cmd) continue;
 
