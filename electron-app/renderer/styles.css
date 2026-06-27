@@ -31,11 +31,22 @@ body {
   padding: 10px 12px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
-  -webkit-app-region: drag;
   flex-shrink: 0;
+  user-select: none;
 }
 
-#title-text { font-weight: 600; font-size: 14px; }
+#titlebar.drag-active {
+  cursor: grabbing;
+}
+
+#title-text {
+  font-weight: 600;
+  font-size: 14px;
+  -webkit-app-region: drag;
+  flex: 1;
+  padding: 4px 0;
+  cursor: grab;
+}
 
 #titlebar-btns {
   display: flex;

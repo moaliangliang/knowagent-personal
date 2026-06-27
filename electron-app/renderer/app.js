@@ -125,6 +125,29 @@ $("btn-hide").onclick = () => window.ka.hide();
 $("btn-maximize").onclick = () => window.ka.maximize();
 $("btn-close").onclick = () => window.ka.hide();
 
+// 窗口拖动（通过 IPC 让主进程处理）
+let isDragging = false, dragX = 0, dragY = 0;
+$("titlebar").addEventListener("mousedown", (e) => {
+  isDragging = true;
+  dragX = e.screenX;
+  dragY = e.screenY;
+  document.body.style.cursor = "grabbing";
+});
+document.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  const dx = e.screenX - dragX;
+  const dy = e.screenY - dragY;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    window.ka.moveBy(dx, dy);
+    dragX = e.screenX;
+    dragY = e.screenY;
+  }
+});
+document.addEventListener("mouseup", () => {
+  isDragging = false;
+  document.body.style.cursor = "";
+});
+
 // Escape 键隐藏窗口
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") window.ka.hide();

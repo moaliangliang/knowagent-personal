@@ -154,7 +154,6 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: true,
-    type: "panel",
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
@@ -570,6 +569,13 @@ ipcMain.handle("maximize-window", () => {
   } else {
     mainWindow.maximize();
   }
+});
+
+// 窗口拖动
+ipcMain.handle("move-window", (event, dx, dy) => {
+  if (!mainWindow) return;
+  const [x, y] = mainWindow.getPosition();
+  mainWindow.setPosition(x + dx, y + dy);
 });
 
 // ── 应用生命周期 ─────────────────────────────────
