@@ -759,14 +759,51 @@ async function runWorkflow() {
 
     try {
       const result = await window.ka.runCommand(cmd);
-      const output = (result.data || "").replace(/\x1b\[[0-9;]*m/g, "").substring(0, 200);
-      results.push(`[${i + 1}/${steps.length}] ${output.split("\n")[0]}`);
+      const output = (result.data || "").replace(/\x1b\[[0-9;]*m/g, "").substring(0, 800);
+      const lines = output.split("\n").filter(l => l.trim()).slice(0, 8);
+      results.push(`[${i + 1}/${steps.length}] ${lines.join("\n      ")}`);
     } catch (e) {
       results.push(`[${i + 1}/${steps.length}] ❌ ${e.message}`);
     }
   }
 
-  alert(results.join("\n") || "✅ " + _tw("执行完成", "Done"));
+  // 用模态弹窗显示完整结果
+  const old = document.getElementById("wf-modal-overlay");
+  if (old) old.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "wf-modal-overlay";
+  overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;";
+  const modal = document.createElement("div");
+  modal.style.cssText = "background:#fff;border-radius:12px;padding:20px;max-width:500px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.2);font-size:12px;line-height:1.6;max-height:80%;overflow-y:auto;white-space:pre-wrap;font-family:monospace;";
+  const resultText = results.join("\n") || "✅ " + _tw("执行完成", "Done");
+  const pre = document.createElement("pre");
+  pre.style.cssText = "margin:0;white-space:pre-wrap;font-size:12px;line-height:1.6;";
+  pre.textContent = resultText;
+  modal.appendChild(pre);
+
+  // 底部按钮组
+  const btnRow = document.createElement("div");
+  btnRow.style.cssText = "display:flex;gap:8px;margin-top:12px;";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.style.cssText = "flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;background:#667eea;color:#fff;font-size:13px;";
+  copyBtn.textContent = _tw("📋 复制结果", "📋 Copy Results");
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(resultText);
+    copyBtn.textContent = _tw("✅ 已复制", "✅ Copied");
+    setTimeout(() => copyBtn.textContent = _tw("📋 复制结果", "📋 Copy Results"), 2000);
+  };
+  btnRow.appendChild(copyBtn);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.style.cssText = "flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#fff;color:#666;font-size:13px;";
+  closeBtn.textContent = _tw("关闭", "Close");
+  closeBtn.onclick = () => overlay.remove();
+  btnRow.appendChild(closeBtn);
+
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 
   isRunning = false;
   renderSteps();

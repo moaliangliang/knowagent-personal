@@ -245,14 +245,40 @@ def cmd_sensor_temp(params: dict) -> str:
         timeout=15,
     )
     if rc == 0 and stdout:
-        # powermetrics 输出中可能包含 CPU die temperature
         for line in stdout.splitlines():
             if "die temperature" in line.lower() or "cpu die" in line.lower():
                 m = re.search(r"(\d+[.,]\d+)", line)
                 if m:
                     return f"🌡️  CPU 温度: {m.group(1).replace(',', '.')}°C"
 
-    return "❌ 无法获取 CPU 温度（请安装 osx-cpu-temp 或 istats）"
+    # 方案五: pmset thermal 状态（Apple Silicon 可用，无 sudo）
+    try:
+        stdout = _run_cmd(["/usr/bin/pmset", "-g", "therm"])
+        if stdout:
+            for line in stdout.splitlines():
+                if "thermal" in line.lower() or "pressure" in line.lower() or "cpu" in line.lower():
+                    return f"🌡️  散热状态: {line.strip()}"
+            # 显示全部
+            lines = [l.strip() for l in stdout.splitlines() if l.strip()]
+            if lines:
+                return f"🌡️  散热信息:\n" + "\n".join(lines[:5])
+    except Exception:
+        pass
+
+    # 方案六: os_log 散热警报
+    try:
+        # 用 ioreg 读取 Apple Silicon 的散热传感器
+        stdout = _run_cmd(["/usr/sbin/ioreg", "-r", "-c", "AppleARMIODevice", "-l"])
+        if stdout:
+            for line in stdout.splitlines():
+                if "temperature" in line.lower() or "temp" in line.lower():
+                    m = re.search(r'["\"]?(\d+[.,]\d+)["\"]?', line)
+                    if m:
+                        return f"🌡️  传感器: {line.strip()[:80]}"
+    except Exception:
+        pass
+
+    return "❌ 无法获取 CPU 温度（尝试: brew install osx-cpu-temp）"
 
 
 # ── 命令注册 ─────────────────────────────────────────────
