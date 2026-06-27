@@ -202,17 +202,21 @@ def cmd_config(params: dict) -> str:
     # show
     raw = cfg.raw
     lines = [f"📋 配置 ({CONFIG_FILE})"]
-    def _fmt(d, prefix=""):
+    def _fmt(d, prefix="", depth=0):
         for k, v in d.items():
             path = f"{prefix}.{k}" if prefix else k
+            indent = "  " * (depth + 1)
             if isinstance(v, dict):
-                lines.append(f"  {path}/")
-                _fmt(v, path)
+                lines.append(f"{indent}📁 {k}/")
+                _fmt(v, path, depth + 1)
             else:
                 display = str(v)
                 if any(s in path.lower() for s in ["password", "api_key", "secret", "key"]):
                     display = "****" if v else ""
-                lines.append(f"  {path} = {display}")
+                # 长列表截断
+                if len(display) > 100:
+                    display = display[:80] + "..."
+                lines.append(f"{indent}  {k} = {display}")
     _fmt(raw)
     return "\n".join(lines)
 
