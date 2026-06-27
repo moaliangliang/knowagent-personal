@@ -588,6 +588,30 @@ function showConfig(idx) {
   const def = STEP_TYPES[step.type];
   const body = $wf("wf-config-body");
 
+  // cmd_call 类型单独渲染
+  if (step.type === "cmd_call") {
+    const cfg = step.config || {};
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="background:#667eea;color:#fff;border-radius:6px;padding:2px 8px;font-size:11px;">⚡</span>
+        <span style="font-weight:600;font-size:14px;">${escapeHtml(cfg.desc || cfg.cmd || "命令")}</span>
+        <span style="font-size:11px;color:#999;margin-left:auto;">#${step.id}</span>
+      </div>
+      <div class="wf-field"><label>${_tw("命令", "Cmd")}</label>
+        <input class="wf-input" value="${escapeHtml(cfg.cmd || "")}" oninput="window._wfUpdateConfig(${idx}, 'cmd', this.value)"></div>
+      <div class="wf-field"><label>${_tw("说明", "Desc")}</label>
+        <input class="wf-input" value="${escapeHtml(cfg.desc || "")}" oninput="window._wfUpdateConfig(${idx}, 'desc', this.value)"></div>
+      <div class="wf-field"><label>${_tw("关键词", "Keyword")}</label>
+        <input class="wf-input" value="${escapeHtml(cfg.keyword || "")}" oninput="window._wfUpdateConfig(${idx}, 'keyword', this.value)"></div>
+      <div class="wf-field"><label>${_tw("公司", "Company")}</label>
+        <input class="wf-input" value="${escapeHtml(cfg.company || "")}" oninput="window._wfUpdateConfig(${idx}, 'company', this.value)"></div>
+      <div class="wf-field"><label>${_tw("名称", "Name")}</label>
+        <input class="wf-input" value="${escapeHtml(cfg.name || "")}" oninput="window._wfUpdateConfig(${idx}, 'name', this.value)"></div>
+      <button class="wf-btn wf-btn-sm" onclick="window._wfRemoveStep(${idx})" style="color:#ef4444;border-color:#ef4444;width:100%;">🗑️ ${_tw("删除此步骤", "Delete step")}</button>
+    `;
+    return;
+  }
+
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <span class="wf-step-icon" style="background:${step.color}">${step.icon}</span>
