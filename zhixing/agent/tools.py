@@ -1650,6 +1650,97 @@ def cmd_voice_input(params: dict) -> str:
 
 # ── 命令注册表 ───────────────────────────────────────────
 
+def cmd_web_login(params: dict) -> str:
+    """网页自动登录 — 从配置读取凭据，自动填表提交。
+    site=站点名（配置在 proxy.logins 中）"""
+    site = params.get("site", "") or params.get("keyword", "")
+    if not site:
+        return "❌ 需要 site 参数"
+
+    try:
+        from zhixing.config import Config
+        cfg = Config()
+        logins = cfg.get("proxy.logins", {})
+        login = None
+        for name, info in logins.items():
+            if site in name or name in site:
+                login = info
+                break
+        if not login:
+            available = "、".join(logins.keys()) if logins else "（无）"
+            return f"❌ 未找到站点「{site}」，已配置: {available}"
+
+        url = login.get("url", "")
+        username = login.get("username", "")
+        password = login.get("password", "")
+        uf = login.get("username_field", "账号")
+        pf = login.get("password_field", "密码")
+        sf = login.get("submit_field", "登录")
+
+        results = []
+
+        # 打开页面
+        if url:
+            try:
+                subprocess.Popen(["open", url],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                results.append(f"🌐 已打开 {url}")
+            except Exception as e:
+                results.append(f"⚠️ 打开页面失败: {e}")
+
+        results.append(f"⏳ 等待 4 秒加载页面...")
+
+        # 使用视觉自动化填表
+        from zhixing.agent.auto import _screenshot, _ocr_image, _find_center
+        import time as _time
+        _time.sleep(4)
+
+        # 截图 + OCR 找字段位置
+        path = _screenshot()
+        data = _ocr_image(path)
+        blocks = data.get("blocks", []) if data else []
+
+        if username:
+            pos = _find_center(blocks, uf)
+            if pos:
+                subprocess.run(["cliclick", f"c:{pos[0]},{pos[1]}"],
+                    capture_output=True, timeout=5)
+                _time.sleep(0.5)
+                subprocess.run(["cliclick", f"t:{username}"],
+                    capture_output=True, timeout=5)
+                results.append(f"👤 已填写用户名")
+            else:
+                results.append(f"⚠️ 未找到「{uf}」")
+
+        if password:
+            _time.sleep(0.5)
+            pos = _find_center(blocks, pf)
+            if pos:
+                subprocess.run(["cliclick", f"c:{pos[0]},{pos[1]}"],
+                    capture_output=True, timeout=5)
+                _time.sleep(0.5)
+                subprocess.run(["cliclick", f"t:{password}"],
+                    capture_output=True, timeout=5)
+                results.append(f"🔑 已填写密码")
+            else:
+                results.append(f"⚠️ 未找到「{pf}」")
+
+        if sf:
+            _time.sleep(0.5)
+            pos = _find_center(blocks, sf)
+            if pos:
+                subprocess.run(["cliclick", f"c:{pos[0]},{pos[1]}"],
+                    capture_output=True, timeout=5)
+                results.append(f"✅ 已点击「{sf}」")
+            else:
+                results.append(f"⚠️ 未找到「{sf}」")
+
+        return "\n".join(results)
+
+    except Exception as e:
+        return f"❌ 登录失败: {e}"
+
+
 def cmd_vpn_connect(params: dict) -> str:
     """连接公司 VPN。company=盛吉盛/富沃德/三一 自动切换并连接"""
     company = params.get("company", "") or params.get("keyword", "")
@@ -1856,6 +1947,7 @@ COMMANDS = {
     "workflow_execute": cmd_workflow_execute,
     "vpn_connect": cmd_vpn_connect,
     "vpn_status": cmd_vpn_status,
+    "web_login": cmd_web_login,
 }
 
 # Merge extra commands
@@ -2031,6 +2123,13 @@ TOOL_SCHEMAS: dict = {
             "company": {"type": "string", "description": "公司名: 盛吉盛/富沃德"},
         },
         "required": ["company"],
+    },
+    "web_login": {
+        "type": "object",
+        "properties": {
+            "site": {"type": "string", "description": "站点名: 三一VPN"},
+        },
+        "required": ["site"],
     },
     "vpn_status": {
         "type": "object",

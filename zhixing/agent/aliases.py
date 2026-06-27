@@ -135,6 +135,7 @@ CN_ALIASES = {
     "代理": "vpn_status",
     "盛吉盛VPN": "vpn_connect",
     "富沃德VPN": "vpn_connect",
+    "自动登录": "web_login",
 
     # ── 企业通讯（新增）──
     "企业微信": "wecom",

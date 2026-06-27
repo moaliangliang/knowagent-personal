@@ -49,6 +49,17 @@ DEFAULT_CONFIG = {
             "password": "",
             "trusted_cert": "d5e84c6f2b426cac1cceeebdd43797f76d4ef7f885ee814d01f8460f8bd55b24",
         },
+        # 网页登录凭据（web_login 命令使用）
+        "logins": {
+            "三一VPN": {
+                "url": "https://ivpn.sanygroup.com/portal/#/login",
+                "username": "gw_maoll",
+                "password": "Pisx@0401",
+                "username_field": "请输入账号",
+                "password_field": "请输入密码",
+                "submit_field": "登录",
+            },
+        },
         # 公司 VPN 配置模板
         "companies": {
             "盛吉盛": {
