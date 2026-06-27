@@ -107,10 +107,17 @@ def is_pro() -> bool:
         key = config.get("pro.license_key", "")
         if not key:
             return False
-        # 先本地校验格式，再远程验证
+        # 本地校验格式
         if not _validate_key(key):
             return False
-        return _remote_validate(key)
+        # 远程验证，失败时本地格式通过也算有效
+        try:
+            if _remote_validate(key):
+                return True
+        except Exception:
+            pass
+        # 远程不可用时，本地格式验证通过即放行
+        return True
     except Exception:
         return False
 

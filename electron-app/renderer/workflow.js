@@ -297,19 +297,21 @@ const WORKFLOW_PRESETS = [
     ],
   },
   {
-    name: { zh: "🔐 三一 VPN 网页登录", en: "SANY Web Login" },
+    name: { zh: "🔐 三一 VPN 自动登录", en: "SANY Auto Login" },
     icon: "🔐",
     steps: [
-      { type: "navigate", config: { value: "https://ivpn.sanygroup.com/portal/#/login", desc: "打开VPN登录页" } },
-      { type: "wait", config: { seconds: 3, desc: "等待加载" } },
-      { type: "fill", config: { target: "用户名", value: "gw_maoll", desc: "输入用户名" } },
-      { type: "fill", config: { target: "密码", value: "Pisx@0401", desc: "输入密码" } },
-      { type: "click", config: { target: "登录", desc: "点击登录" } },
-      { type: "wait", config: { seconds: 5, desc: "等待登录完成" } },
-      { type: "cmd_call", config: { cmd: "open_app", name: "AccessClient", desc: "打开 AccessClient" } },
-      { type: "wait", config: { seconds: 5, desc: "等待客户端加载" } },
-      { type: "screenshot", config: { desc: "截图确认" } },
-      { type: "cmd_call", config: { cmd: "notification", text: "三一 VPN 接入完成", desc: "完成通知" } },
+      { type: "cmd_call", config: { cmd: "open_url", name: "https://ivpn.sanygroup.com/portal/#/login", desc: "打开VPN登录页" } },
+      { type: "wait", config: { seconds: 4, desc: "等待页面加载" } },
+      { type: "click", config: { target: "请输入账号", desc: "点击账号输入框" } },
+      { type: "type", config: { value: "gw_maoll", desc: "输入用户名" } },
+      { type: "wait", config: { seconds: 1, desc: "等待" } },
+      { type: "click", config: { target: "请输入密码", desc: "点击密码输入框" } },
+      { type: "type", config: { value: "Pisx@0401", desc: "输入密码" } },
+      { type: "wait", config: { seconds: 1, desc: "等待" } },
+      { type: "click", config: { target: "登录", desc: "点击登录按钮" } },
+      { type: "wait", config: { seconds: 8, desc: "等待登录完成" } },
+      { type: "screenshot", config: { desc: "截图确认登录状态" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "三一 VPN 登录完成", desc: "完成通知" } },
     ],
   },
 ];
@@ -764,6 +766,8 @@ async function runWorkflow() {
       if (cfg.text) cmd += ' text="' + cfg.text + '"';
       if (cfg.level) cmd += " level=" + cfg.level;
       if (cfg.minutes) cmd += " minutes=" + cfg.minutes;
+      if (cfg.name && cfg.name.startsWith("http")) cmd = "open_url url=" + cfg.name;
+      else if (cfg.name) cmd += " name=" + cfg.name;
       if (cfg.name) cmd += " name=" + cfg.name;
       if (cfg.company) cmd += " company=" + cfg.company;
     } else if (type === "open_app") {
