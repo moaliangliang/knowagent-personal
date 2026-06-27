@@ -1651,10 +1651,10 @@ def cmd_voice_input(params: dict) -> str:
 # ── 命令注册表 ───────────────────────────────────────────
 
 def cmd_vpn_connect(params: dict) -> str:
-    """连接公司 VPN。company=盛吉盛/富沃德 自动切换并连接"""
+    """连接公司 VPN。company=盛吉盛/富沃德/三一 自动切换并连接"""
     company = params.get("company", "") or params.get("keyword", "")
     if not company:
-        return "❌ 需要 company 参数（盛吉盛/富沃德）"
+        return "❌ 需要 company 参数（盛吉盛/富沃德/三一）"
 
     try:
         from zhixing.config import Config
@@ -1693,16 +1693,48 @@ def cmd_vpn_connect(params: dict) -> str:
                 cfg.set("proxy.fortinet.port", fp)
             if fc:
                 cfg.set("proxy.fortinet.trusted_cert", fc)
+            # 从配置或 Keychain 读取用户名密码
+            vpn_user = profile.get("fortinet_username", "") or profile.get("vpn_username", "")
+            vpn_pass = profile.get("fortinet_password", "") or profile.get("vpn_password", "")
+            # 尝试从 Keychain 读取
+            if not vpn_pass:
+                try:
+                    from zhixing.agent.keychain import keychain_get
+                    kp = keychain_get("zhixing", f"vpn_{cname}_password") or ""
+                    if kp:
+                        vpn_pass = kp
+                        ku = keychain_get("zhixing", f"vpn_{cname}_username") or ""
+                        if ku:
+                            vpn_user = ku
+                except Exception:
+                    pass
+            if vpn_user:
+                cfg.set("proxy.fortinet.username", vpn_user)
+            if vpn_pass:
+                cfg.set("proxy.fortinet.password", vpn_pass)
+            else:
+                return f"❌ 未配置「{cname}」VPN 密码\n   请运行: zhi credential set name=vpn_{cname}_password"
         cfg.save()
 
-        # 连接
         from zhixing.agent.vpn import VpnClient
         vpn = VpnClient(cfg)
+
+        # 连接
         if vpn_type == "fortinet":
             result = vpn.fortinet_connect()
         else:
+            # aTrust：在浏览器中打开登录页
+            login_url = f"https://{profile.get('vpn_host', '')}"
+            vpn_user = profile.get("vpn_username", "")
+            try:
+                subprocess.Popen(["open", login_url],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
             result = vpn.check_connectivity()
             vpn.enable_proxy()
+            if vpn_user:
+                result = f"🔐 已在浏览器中打开 {login_url}\n账号: {vpn_user}\n{result}"
 
         return f"✅ 已切换到「{cname}」VPN\n{result}"
 

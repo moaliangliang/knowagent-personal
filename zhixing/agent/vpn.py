@@ -427,51 +427,32 @@ CipherString = DEFAULT:@SECLEVEL=0
             "",
         ]
 
-        # 后台启动（使用 nohup 和 sudo）
-        cmd = [
-            "sudo",
-            "env",
-            f"OPENSSL_CONF={OPENSSL_CONFIG_FILE}",
-            bin_path,
-            "-c", FORTI_CONFIG_FILE,
-        ]
+        log_file = os.path.join(VPN_CONFIG_DIR, "fortinet.log")
+        with open(log_file, "a", encoding="utf-8") as log:
+            log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
 
-        # 启动后打印日志到 stdout
+        # 通过 Terminal 执行 sudo 命令（解决 TTY 问题）
         try:
-            log_file = os.path.join(VPN_CONFIG_DIR, "fortinet.log")
-            with open(log_file, "a", encoding="utf-8") as log:
-                log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-            )
-
-            # 等待几秒看是否启动成功
+            script = f"""
+            tell application "Terminal"
+                activate
+                do script "sudo env OPENSSL_CONF={OPENSSL_CONFIG_FILE} {bin_path} -c {FORTI_CONFIG_FILE}"
+            end tell"""
+            subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
             time.sleep(3)
-            ret = proc.poll()
-            if ret is not None:
-                # 立即退出了 — 有错误
-                output, _ = proc.communicate(timeout=5)
-                error_msg = output.strip() if output else "未知错误（请检查配置）"
-                return (
-                    f"❌ Fortinet VPN 连接失败 (exit {ret})\n"
-                    f"   {error_msg}\n"
-                    f"   日志: {log_file}"
-                )
-
             self._fill_fortinet_status(sv)
             if sv.fortinet_running:
                 lines.append(f"✅ Fortinet VPN 已连接 (PID {sv.fortinet_pid})")
+                lines.append("   内部路由已就绪，可以访问内网资源")
             else:
-                lines.append("⏳ Fortinet VPN 启动中（后台运行）...")
-                lines.append(f"   日志: {log_file}")
+                lines.append("⏳ Fortinet VPN 正在 Terminal 中启动...")
+                lines.append("   请在 Terminal 窗口中输入密码")
+                lines.append(f"   配置: {FORTI_CONFIG_FILE}")
 
             return "\n".join(lines)
 
         except Exception as e:
-            return f"❌ 启动 Fortinet VPN 失败: {e}"
+            return f"❌ 启动失败: {e}"
 
     def fortinet_disconnect(self) -> str:
         """断开 Fortinet VPN"""

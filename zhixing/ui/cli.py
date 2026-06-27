@@ -147,6 +147,7 @@ NL_RULES = [
     # VPN 公司连接
     (["连接盛吉盛", "连盛吉盛", "盛吉盛半导体"], lambda _: ("vpn_connect", {"company": "盛吉盛"})),
     (["连接富沃德", "连富沃德"], lambda _: ("vpn_connect", {"company": "富沃德"})),
+    (["连接三一", "连三一", "三一VPN", "三一集团"], lambda _: ("vpn_connect", {"company": "三一"})),
     (["工作流", "workflow", "auto"], lambda _: None),
 ]
 
@@ -211,7 +212,7 @@ def parse_natural(text: str):
     # NL 规则优先匹配：仅对含特定关键词的文本生效
     # 必须在别名之前，防止别名"打开"/"删除"等通用词拦截
     import re as _re
-    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo|帮助|help|命令|能力|功能|commands|list|盛吉盛|富沃德|VPN|vpn)', text, re.I):
+    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo|帮助|help|命令|能力|功能|commands|list|盛吉盛|富沃德|三一|VPN|vpn)', text, re.I):
         nl_result = _match_nl_rules(text)
         if nl_result:
             return nl_result
