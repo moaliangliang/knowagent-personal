@@ -181,6 +181,71 @@ function init() {
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 120) + "px";
   };
+
+  // 设置按钮
+  document.getElementById("ai-settings-btn").onclick = showSettings;
+}
+
+async function showSettings() {
+  const msgs = document.getElementById("ai-msgs");
+  const welcome = document.getElementById("ai-welcome");
+  if (welcome) welcome.remove();
+
+  // 读取当前配置
+  let currentKey = "";
+  try {
+    currentKey = (await wsSend({ action: "get_config", params: { key: "llm_api_key" } })).data || "";
+  } catch(e) {}
+
+  msgs.innerHTML = `
+    <div class="ai-msg ai-bot" style="align-self:flex-start;">
+      <b>⚙️ 设置</b><br><br>
+
+      <label style="font-size:12px;color:#666;">DeepSeek API Key</label><br>
+      <input id="key-input" type="text"
+        style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin:4px 0 12px;box-sizing:border-box;"
+        placeholder="sk-..." value="${currentKey}"><br>
+
+      <label style="font-size:12px;color:#666;">API Base URL（可选，默认 https://api.deepseek.com/v1）</label><br>
+      <input id="base-input" type="text"
+        style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin:4px 0 12px;box-sizing:border-box;"
+        placeholder="https://api.deepseek.com/v1"><br>
+
+      <div style="display:flex;gap:8px;">
+        <button id="save-key-btn" class="ai-scene-btn" style="flex:1;background:#667eea;color:#fff;border-color:#667eea;">
+          💾 保存
+        </button>
+        <button id="back-btn" class="ai-scene-btn" style="flex:1;">
+          ↩ 返回
+        </button>
+      </div>
+      <div id="key-status" style="margin-top:8px;font-size:12px;color:#999;"></div>
+    </div>
+  `;
+
+  document.getElementById("save-key-btn").onclick = async () => {
+    const key = document.getElementById("key-input").value.trim();
+    const base = document.getElementById("base-input").value.trim();
+    const status = document.getElementById("key-status");
+
+    if (key) {
+      await wsSend({ action: "set_config", params: { key: "llm_api_key", value: key } });
+    }
+    if (base) {
+      await wsSend({ action: "set_config", params: { key: "base_url", value: base } });
+    }
+    status.textContent = "✅ 已保存！重启应用后生效";
+    status.style.color = "#22c55e";
+  };
+
+  document.getElementById("back-btn").onclick = renderWelcome;
+}
+
+async function updateUsage() {
+  try {
+    const resp = await wsSend({ action: "get_config", params: { key: "usage" } });
+    // usage is tracked server-side, shown in chat response
+  } catch(e) {}
 }
 
 if (document.readyState === "loading") {

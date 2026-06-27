@@ -9,6 +9,7 @@
 """
 
 import json
+import os
 from typing import Any
 
 from zhixing.agent.llm_client import LLMClient
@@ -94,7 +95,29 @@ class Orchestrator:
     """自然语言指令编排器。"""
 
     def __init__(self, llm_client: LLMClient | None = None):
-        self.llm = llm_client or LLMClient()
+        if llm_client:
+            self.llm = llm_client
+        else:
+            # 优先级: env > config.yaml > 空
+            from zhixing.config import Config
+            cfg = Config()
+            default_key = (
+                os.environ.get("ZHIXING_API_KEY", "")
+                or cfg.get("llm.api_key", "")
+            )
+            default_provider = (
+                os.environ.get("ZHIXING_API_PROVIDER", "")
+                or cfg.get("llm.provider", "deepseek")
+            )
+            default_base = (
+                os.environ.get("ZHIXING_API_BASE", "")
+                or cfg.get("llm.base_url", "")
+            )
+            self.llm = LLMClient(
+                api_key=default_key,
+                provider=default_provider,
+                api_base=default_base,
+            )
         self._tool_defs = None  # 懒加载
 
     def get_tools(self) -> list[dict]:

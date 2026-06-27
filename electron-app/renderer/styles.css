@@ -580,6 +580,31 @@ body {
   text-align: center;
 }
 
+/* AI 面板顶部栏 */
+#ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  color: #666;
+  flex-shrink: 0;
+}
+#ai-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#ai-settings-btn {
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity .2s;
+}
+#ai-settings-btn:hover { opacity: 1; }
+
 #ai-welcome h2 {
   font-size: 22px;
   color: #333;

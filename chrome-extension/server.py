@@ -102,6 +102,33 @@ async def handle_message(ws, msg: dict):
                 },
             }
 
+        elif action == "set_config":
+            # 保存配置（如 API Key）
+            from zhixing.config import Config
+            cfg = Config()
+            key = params.get("key", "")
+            value = params.get("value", "")
+            if key and value:
+                key_path = key.replace("_", ".")
+                cfg.set(key_path, value)
+                cfg.save()
+                return {"type": "result", "data": f"✅ {key} 已保存"}
+            return {"type": "result", "data": "❌ 需要 key 和 value 参数"}
+
+        elif action == "get_config":
+            # 读取配置
+            from zhixing.config import Config
+            cfg = Config()
+            key = params.get("key", "")
+            if key:
+                key_path = key.replace("_", ".")
+                val = cfg.get(key_path, "")
+                # 掩盖 API Key
+                if "key" in key.lower() and val:
+                    val = val[:8] + "****" + val[-4:] if len(val) > 12 else "****"
+                return {"type": "result", "data": val}
+            return {"type": "result", "data": ""}
+
         elif action == "command":
             cmd = params.get("cmd", "")
             rest = params.get("rest", "")
