@@ -1267,9 +1267,40 @@ def cmd_battery_status(params: dict) -> str:
 
 def cmd_wifi_status(params: dict) -> str:
     """WiFi 状态"""
-    r = subprocess.run(["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
-        capture_output=True, text=True, timeout=10)
-    return f"📶 WiFi:\n{r.stdout.strip()}" if r.stdout.strip() else "📶 WiFi: 未连接或不可用"
+    lines = []
+
+    # 1. 通过 system_profiler 获取 WiFi 信息
+    try:
+        r = subprocess.run(["system_profiler", "SPAirPortDataType", "-detailLevel", "basic"],
+            capture_output=True, text=True, timeout=15)
+        if r.returncode == 0:
+            for line in r.stdout.split("\n"):
+                stripped = line.strip()
+                if ":" in stripped and not stripped.startswith("SDK") and not stripped.startswith("Wireless"):
+                    lines.append(stripped)
+    except Exception:
+        pass
+
+    # 2. 补充当前 SSID
+    try:
+        r = subprocess.run(["networksetup", "-getairportnetwork", "en0"],
+            capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and ":" in r.stdout:
+            lines.append(r.stdout.strip())
+    except Exception:
+        pass
+
+    # 3. 补充 IP 信息
+    try:
+        r = subprocess.run(["ipconfig", "getifaddr", "en0"],
+            capture_output=True, text=True, timeout=5)
+        ip = r.stdout.strip()
+        if ip:
+            lines.append(f"IP: {ip}")
+    except Exception:
+        pass
+
+    return f"📶 WiFi:\n" + "\n".join(lines) if lines else "📶 WiFi: 未连接或不可用"
 
 
 def cmd_keyboard_type(params: dict) -> str:
