@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "知行助手 ZhiXing Assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI 桌面助手 - 控制浏览器、填表、截图、查看系统状态",
   "permissions": [
     "activeTab",

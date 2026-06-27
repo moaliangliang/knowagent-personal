@@ -1,6 +1,6 @@
 {
   "name": "zhixing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "\u77e5\u884c (ZhiXing) \u2014 AI-powered macOS desktop automation assistant",
   "author": "ZhiXing Team <team@zhixing.ai>",
   "main": "main.js",
