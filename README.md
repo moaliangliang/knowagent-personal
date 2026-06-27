@@ -9,6 +9,11 @@
 </p>
 
 <h1 align="center">⬡ 知行 (ZhiXing)</h1>
+
+<p align="center">
+  <img src="docs/demo.gif" width="420" alt="ZhiXing Demo">
+</p>
+
 <p align="center">
   <b>AI 驱动的 macOS 桌面自动化助手</b><br>
   <a href="https://github.com/zhixing-ai/zhixing/releases"><img src="https://img.shields.io/github/v/release/zhixing-ai/zhixing?label=version" alt="Version"></a>
