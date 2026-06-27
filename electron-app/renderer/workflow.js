@@ -285,6 +285,32 @@ const WORKFLOW_PRESETS = [
       { type: "cmd_call", config: { cmd: "notification", text: "Webhook 已触发", desc: "通知" } },
     ],
   },
+  {
+    name: { zh: "🏢 三一 VPN 接入", en: "SANY VPN" },
+    icon: "🏢",
+    steps: [
+      { type: "cmd_call", config: { cmd: "vpn_connect", company: "三一", desc: "连接三一VPN" } },
+      { type: "cmd_call", config: { cmd: "open_app", name: "AccessClient", desc: "打开 AccessClient" } },
+      { type: "wait", config: { seconds: 5, desc: "等待客户端加载" } },
+      { type: "screenshot", config: { desc: "截图确认登录页" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "请在 AccessClient 中输入用户名密码登录", desc: "提示登录" } },
+    ],
+  },
+  {
+    name: { zh: "🔐 三一 CloudClient 登录", en: "SANY CloudClient" },
+    icon: "🔐",
+    steps: [
+      { type: "cmd_call", config: { cmd: "open_app", name: "AccessClient", desc: "打开AccessClient" } },
+      { type: "wait", config: { seconds: 3, desc: "等待加载" } },
+      { type: "click", config: { target: "用户名", desc: "点击用户名输入框" } },
+      { type: "type", config: { value: "gw_maoll", desc: "输入用户名" } },
+      { type: "click", config: { target: "密码", desc: "点击密码输入框" } },
+      { type: "type", config: { value: "Pisx@0401", desc: "输入密码" } },
+      { type: "click", config: { target: "登录", desc: "点击登录" } },
+      { type: "wait", config: { seconds: 10, desc: "等待登录完成" } },
+      { type: "screenshot", config: { desc: "截图确认登录成功" } },
+    ],
+  },
 ];
 
 function showPresetsDialog() {
@@ -694,6 +720,8 @@ function toYaml() {
       result += `    desc: "${s.config.desc || s.config.cmd}"\n`;
       if (s.config.keyword) result += `    params:\n      keyword: "${s.config.keyword}"\n`;
       if (s.config.text) result += `    params:\n      text: "${s.config.text}"\n`;
+      if (s.config.company) result += `    params:\n      company: "${s.config.company}"\n`;
+      if (s.config.name) result += `    params:\n      name: "${s.config.name}"\n`;
       return;
     }
     const lines = [`  - action: ${s.type}`];
@@ -736,6 +764,9 @@ async function runWorkflow() {
       if (cfg.level) cmd += " level=" + cfg.level;
       if (cfg.minutes) cmd += " minutes=" + cfg.minutes;
       if (cfg.name) cmd += " name=" + cfg.name;
+      if (cfg.company) cmd += " company=" + cfg.company;
+    } else if (type === "open_app") {
+      cmd = "open_app name=" + (cfg.name || "");
     } else if (type === "navigate") {
       cmd = "open_url url=" + (cfg.value || "");
     } else if (type === "click") {
