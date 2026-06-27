@@ -1,7 +1,7 @@
 {
   "name": "zhixing",
   "version": "1.0.0",
-  "description": "知行 (ZhiXing) — AI-powered macOS desktop automation assistant",
+  "description": "\u77e5\u884c (ZhiXing) \u2014 AI-powered macOS desktop automation assistant",
   "author": "ZhiXing Team <team@zhixing.ai>",
   "main": "main.js",
   "scripts": {
@@ -20,7 +20,7 @@
   "build": {
     "appId": "com.zhixing.desktop",
     "productName": "ZhiXing",
-    "copyright": "Copyright © 2026 ZhiXing Team",
+    "copyright": "Copyright \u00a9 2026 ZhiXing Team",
     "directories": {
       "output": "release"
     },
@@ -125,11 +125,6 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "zhixing-ai",
-      "repo": "zhixing"
     }
   },
   "devDependencies": {
