@@ -358,8 +358,8 @@ def cmd_mail_send(params: dict) -> str:
 
 def cmd_notification(params: dict) -> str:
     """Mac 通知弹窗"""
-    raw_text = params.get("text", "Mac Agent 通知")
-    raw_title = params.get("title", "Mac Agent Personal")
+    raw_text = params.get("text", "知行 (ZhiXing) 通知")
+    raw_title = params.get("title", "知行 (ZhiXing)")
     raw_subtitle = params.get("subtitle", "")
     text = _osa_escape(raw_text)
     title = _osa_escape(raw_title)
@@ -822,9 +822,10 @@ def _play_from_netease(keyword: str, artist: str = "") -> str | None:
         dl = subprocess.run(
             ["yt-dlp", "-f", "bestaudio", "--extract-audio",
              "--audio-format", "mp3", "--output", tmp,
-             "--socket-timeout", "15", "--no-playlist",
+             "--socket-timeout", "10", "--no-playlist",
+             "--max-filesize", "50M",
              f"https://music.163.com/song?id={song_id}"],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, timeout=15,
         )
         if dl.returncode != 0:
             return None
@@ -925,6 +926,10 @@ def _play_youtube(keyword: str, artist: str = "") -> str:
     """完整歌曲播放（多引擎：网易云 → YouTube → 提示）"""
     _stop_youtube_playback()
 
+    # 快速跳过：无 yt-dlp 就不尝试网络播放
+    if not shutil.which("yt-dlp"):
+        return "❌ 无法播放: 未安装 yt-dlp（用于在线音乐下载）"
+
     # 1. 网易云音乐（中国大陆可用）
     result = _play_from_netease(keyword, artist)
     if result:
@@ -988,10 +993,21 @@ def cmd_music_search_online(params: dict) -> str:
     first_result = None
     songs_str = ""
 
-    # ── 1. 搜索 iTunes Store（获取歌曲元数据） ──
+    # 快速检查：若无 yt-dlp 且无 Music app，跳过网络播放
+    has_yt_dlp = shutil.which("yt-dlp") is not None
+    has_music_app = False
+    try:
+        r = subprocess.run(["osascript", "-e",
+            'tell application "System Events" to exists process "Music"'],
+            capture_output=True, text=True, timeout=3)
+        has_music_app = "true" in r.stdout.lower()
+    except Exception:
+        pass
+
+    # ── 1. 搜索 iTunes Store（获取歌曲元数据，快速超时） ──
     try:
         url = f"https://itunes.apple.com/search?term={urllib.parse.quote(keyword)}&country=cn&media=music&limit=10"
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read())
         results = data.get("results", [])
         if results:

@@ -283,7 +283,7 @@ def _get_api_token(platform: str) -> str | None:
 def cmd_wecom(params: dict) -> str:
     """企业微信集成。action=send(默认)/uibot/send_markdown，text=消息内容，contact=联系人"""
     action = params.get("action", "send")
-    text = params.get("text", params.get("keyword", "Hello from Mac Agent"))
+    text = params.get("text", params.get("keyword", "来自知行 (ZhiXing)"))
     contact = params.get("contact", "")
 
     if action == "uibot":
@@ -292,7 +292,7 @@ def cmd_wecom(params: dict) -> str:
         return _send_via_ui("wecom", contact, text)
 
     if action == "send_markdown":
-        title = params.get("title", "Mac Agent 通知")
+        title = params.get("title", "知行 (ZhiXing) 通知")
         return _send_webhook_markdown("wecom", title, text)
 
     return _send_webhook("wecom", text)
@@ -301,7 +301,7 @@ def cmd_wecom(params: dict) -> str:
 def cmd_feishu(params: dict) -> str:
     """飞书集成。action=send(默认)/uibot/send_markdown，text=消息内容，contact=联系人"""
     action = params.get("action", "send")
-    text = params.get("text", params.get("keyword", "Hello from Mac Agent"))
+    text = params.get("text", params.get("keyword", "来自知行 (ZhiXing)"))
     contact = params.get("contact", "")
 
     if action == "uibot":
@@ -310,7 +310,7 @@ def cmd_feishu(params: dict) -> str:
         return _send_via_ui("feishu", contact, text)
 
     if action == "send_markdown":
-        title = params.get("title", "Mac Agent 通知")
+        title = params.get("title", "知行 (ZhiXing) 通知")
         return _send_webhook_markdown("feishu", title, text)
 
     return _send_webhook("feishu", text)
@@ -319,7 +319,7 @@ def cmd_feishu(params: dict) -> str:
 def cmd_dingtalk(params: dict) -> str:
     """钉钉集成。action=send(默认)/uibot/send_markdown，text=消息内容，contact=联系人"""
     action = params.get("action", "send")
-    text = params.get("text", params.get("keyword", "Hello from Mac Agent"))
+    text = params.get("text", params.get("keyword", "来自知行 (ZhiXing)"))
     contact = params.get("contact", "")
 
     if action == "uibot":
@@ -328,7 +328,7 @@ def cmd_dingtalk(params: dict) -> str:
         return _send_via_ui("dingtalk", contact, text)
 
     if action == "send_markdown":
-        title = params.get("title", "Mac Agent 通知")
+        title = params.get("title", "知行 (ZhiXing) 通知")
         return _send_webhook_markdown("dingtalk", title, text)
 
     return _send_webhook("dingtalk", text)
@@ -341,7 +341,7 @@ def cmd_broadcast(params: dict) -> str:
     text = params.get("text", params.get("keyword", ""))
     if not text:
         return "❌ 需要 text 参数"
-    title = params.get("title", "Mac Agent 通知")
+    title = params.get("title", "知行 (ZhiXing) 通知")
     platforms_str = params.get("platforms", "all")
 
     if platforms_str == "all":

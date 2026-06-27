@@ -86,12 +86,12 @@ def get_funnel_message(state: dict, lang: str = "zh") -> str | None:
         _save(state)
         if lang == "zh":
             return (
-                "  ⭐ 喜欢 Mac Agent Personal？欢迎在 GitHub 点个 Star 支持！\n"
+                "  ⭐ 喜欢知行 (ZhiXing)？欢迎在 GitHub 点个 Star 支持！\n"
                 f"     {GITHUB_URL}\n"
                 "     输入 \x1b[1mstar\x1b[0m 打开，或 \x1b[1mdismiss\x1b[0m 不再提示"
             )
         return (
-            "  ⭐ Like Mac Agent Personal? Give it a Star on GitHub!\n"
+            "  ⭐ Like 知行 (ZhiXing)? Give it a Star on GitHub!\n"
             f"     {GITHUB_URL}\n"
             "     Type \x1b[1mstar\x1b[0m to open, or \x1b[1mdismiss\x1b[0m to hide"
         )
@@ -157,7 +157,7 @@ def get_sponsor_text(lang: str = "zh") -> str:
 
     if lang == "zh":
         lines = [
-            "☕ \x1b[1m支持 Mac Agent Personal 开发\x1b[0m",
+            "☕ \x1b[1m支持知行 (ZhiXing) 开发\x1b[0m",
             "",
             "你可以通过以下方式支持这个项目：",
             "",
@@ -174,7 +174,7 @@ def get_sponsor_text(lang: str = "zh") -> str:
         ]
     else:
         lines = [
-            "☕ \x1b[1mSupport Mac Agent Personal Development\x1b[0m",
+            "☕ \x1b[1mSupport 知行 (ZhiXing) Development\x1b[0m",
             "",
             "You can support this project by:",
             "",

@@ -408,11 +408,8 @@ function createTray() {
       },
       { type: "separator" },
       {
-        label: t("重启后端", "Restart Backend"),
-        click: () => {
-          stopPythonBackend();
-          setTimeout(startPythonBackend, 1000);
-        },
+        label: t("重启应用", "Restart App"),
+        click: () => { app.relaunch(); app.quit(); },
       },
       { type: "separator" },
       {
@@ -576,7 +573,8 @@ app.whenReady().then(() => {
   createTray();
   createWindow();
   registerShortcuts();
-  startPythonBackend();
+  // 后端已集成到 IPC（execSync zhi），不再需要独立 server.py
+  // startPythonBackend();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -589,7 +587,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  stopPythonBackend();
   if (floatBtn) { floatBtn.destroy(); floatBtn = null; }
   globalShortcut.unregisterAll();
 });

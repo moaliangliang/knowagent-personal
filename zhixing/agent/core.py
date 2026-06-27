@@ -21,7 +21,7 @@ from zhixing.harness.integration import install_harness
 from zhixing.harness.self_improvement import SelfImprovementLoop
 from zhixing.harness.skill_context import SkillContext, SkillUsageTracker
 
-SYSTEM_PROMPT = """你是 Mac Agent Personal，一个本地运行的 Mac 桌面 AI 助手。
+SYSTEM_PROMPT = """你是知行 (ZhiXing)，一个本地运行的 Mac 桌面 AI 助手。
 你有 70 多个本地命令可以控制 Mac 系统，包括：
 
 - 系统状态查询（CPU/内存/磁盘/网络/电池/WiFi）
@@ -333,7 +333,7 @@ class Agent:
         t = text.lower()
         if any(k in t for k in ["你是谁", "你叫什么", "what are you"]):
             return (
-                "🤖 Mac Agent Personal — 你的本地 Mac 桌面 AI 助手\n"
+                "🤖 知行 (ZhiXing) — 你的本地 Mac 桌面 AI 助手\n"
                 "可以控制音乐、截图、OCR识别、UI自动化、查看系统状态等"
             )
         if any(k in t for k in ["能力", "能做什么", "功能", "capabilities"]):

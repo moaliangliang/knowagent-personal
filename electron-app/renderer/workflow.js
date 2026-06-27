@@ -62,12 +62,87 @@ async function checkProStatus() {
 
 const $wf = (id) => document.getElementById(id);
 
+// ── 预设工作流 ────────────────────────────────────
+
+const WORKFLOW_PRESETS = [
+  {
+    name: { zh: "系统报告", en: "System Report" },
+    icon: "📊",
+    steps: [
+      { type: "cmd_call", config: { cmd: "system_status", desc: "检查系统" } },
+      { type: "cmd_call", config: { cmd: "battery_status", desc: "检查电池" } },
+      { type: "cmd_call", config: { cmd: "wifi_status", desc: "检查网络" } },
+      { type: "cmd_call", config: { cmd: "calendar", desc: "今日日程" } },
+    ],
+  },
+  {
+    name: { zh: "音乐时光", en: "Music Time" },
+    icon: "🎵",
+    steps: [
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "经典", desc: "播放经典" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "音乐已开始播放", desc: "通知" } },
+    ],
+  },
+  {
+    name: { zh: "摸鱼预警", en: "Boss Alert" },
+    icon: "🐟",
+    steps: [
+      { type: "cmd_call", config: { cmd: "screenshot", desc: "截屏" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "注意! 老板来了!", desc: "警告" } },
+    ],
+  },
+  {
+    name: { zh: "王力宏", en: "Leehom Wang" },
+    icon: "🎤",
+    steps: [
+      { type: "cmd_call", config: { cmd: "music_search_online", keyword: "王力宏", desc: "搜索并播放王力宏" } },
+      { type: "cmd_call", config: { cmd: "notification", text: "正在播放王力宏的歌曲", desc: "通知" } },
+    ],
+  },
+];
+
+function showPresetsDialog() {
+  let msg = _tw("选择预设工作流：\n\n", "Select preset workflow:\n\n");
+  WORKFLOW_PRESETS.forEach((p, i) => {
+    const label = p.name[_lang_wf];
+    const desc = p.steps.map(s => s.config.desc || s.config.cmd || s.type).join(" → ");
+    msg += `${i + 1}. ${label}  (${desc})\n`;
+  });
+  const idx = parseInt(prompt(msg)) - 1;
+  if (idx >= 0 && idx < WORKFLOW_PRESETS.length) {
+    loadPreset(idx);
+  }
+}
+
+function loadPreset(idx) {
+  const preset = WORKFLOW_PRESETS[idx];
+  if (!preset) return;
+  steps = [];
+  nextId = 1;
+  preset.steps.forEach(s => {
+    const step = {
+      id: nextId++,
+      type: s.type,
+      name: s.config.desc || s.config.cmd || s.type,
+      config: { ...s.config },
+    };
+    // cmd_call 类型用自定义参数
+    if (s.type === "cmd_call") {
+      step.config.isCmd = true;
+    }
+    steps.push(step);
+  });
+  renderSteps();
+  $wf("wf-config-body").innerHTML = '<div style="text-align:center;color:#ccc;padding:20px;font-size:13px;">' + _tw("选择一个步骤进行配置", "Select a step to configure") + '</div>';
+}
+
 // ── 初始化 ─────────────────────────────────────
 
 function initWorkflowEditor(container) {
   container.innerHTML = `
     <div id="wf-toolbar">
       <button id="wf-run-btn" class="wf-btn wf-btn-primary">▶ ${_tw("运行", "Run")}</button>
+      <button id="wf-preset-btn" class="wf-btn">📋 ${_tw("预设", "Presets")}</button>
       <button id="wf-save-btn" class="wf-btn">💾 ${_tw("保存", "Save")}</button>
       <button id="wf-load-btn" class="wf-btn">📂 ${_tw("加载", "Load")}</button>
       <button id="wf-clear-btn" class="wf-btn">🗑️ ${_tw("清空", "Clear")}</button>
@@ -222,9 +297,9 @@ function renderSteps() {
          ondragend="window._wfDragEnd(event)"
          onclick="window._wfSelectStep(${idx})">
       <div class="wf-step-num">${idx + 1}</div>
-      <span class="wf-step-icon" style="background:${step.color}">${step.icon}</span>
+      <span class="wf-step-icon" style="background:${step.color || (step.type === 'cmd_call' ? '#667eea' : '#999')}">${step.icon || (step.type === 'cmd_call' ? '⚡' : '?')}</span>
       <div class="wf-step-body">
-        <div class="wf-step-title">${step.label}</div>
+        <div class="wf-step-title">${step.label || step.name || step.type}</div>
         <div class="wf-step-preview">${stepPreview(step)}</div>
       </div>
       <button class="wf-step-del" onclick="event.stopPropagation();window._wfRemoveStep(${idx})">✕</button>
@@ -236,6 +311,13 @@ function renderSteps() {
 }
 
 function stepPreview(step) {
+  if (step.type === "cmd_call") {
+    const c = step.config;
+    let preview = c.desc || c.cmd || "";
+    if (c.keyword) preview += ` [${c.keyword}]`;
+    if (c.text) preview += ` [${c.text}]`;
+    return preview;
+  }
   const def = STEP_TYPES[step.type];
   if (!def) return "";
   const parts = [];
@@ -393,6 +475,14 @@ function toYaml() {
 
   result += "steps:\n";
   steps.filter(s => STEP_TYPES[s.type]?.category !== "trigger").forEach((s) => {
+    if (s.type === "cmd_call") {
+      // 预设命令调用格式
+      result += `  - cmd: ${s.config.cmd}\n`;
+      result += `    desc: "${s.config.desc || s.config.cmd}"\n`;
+      if (s.config.keyword) result += `    params:\n      keyword: "${s.config.keyword}"\n`;
+      if (s.config.text) result += `    params:\n      text: "${s.config.text}"\n`;
+      return;
+    }
     const lines = [`  - action: ${s.type}`];
     if (s.config.condition_type) lines.push(`    condition: ${s.config.condition_type}`);
     if (s.config.condition_value) lines.push(`    value: "${s.config.condition_value}"`);
@@ -489,6 +579,7 @@ function showLoadDialog() {
 
 function bindWfEvents() {
   $wf("wf-run-btn").onclick = runWorkflow;
+  $wf("wf-preset-btn").onclick = showPresetsDialog;
   $wf("wf-save-btn").onclick = saveWorkflow;
   $wf("wf-load-btn").onclick = showLoadDialog;
   $wf("wf-clear-btn").onclick = clearSteps;

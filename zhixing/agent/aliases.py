@@ -181,6 +181,14 @@ CN_ALIASES = {
     "打开": "open_app",
     "启动": "open_app",
     "目录": "file_list",
+    "图片分析": "image_analyze",
+    "分析图片": "image_analyze",
+    "看图": "image_analyze",
+    "识别图片": "image_analyze",
+    "新闻": "news",
+    "热搜": "news",
+    "资讯": "news",
+    "头条": "news",
 }
 
 # 构建反向映射（英文 → 中文列表），供帮助信息使用

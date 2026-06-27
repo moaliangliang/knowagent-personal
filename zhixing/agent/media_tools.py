@@ -717,15 +717,177 @@ def _copy_to_clipboard(text: str):
 
 # ── Command Registration ───────────────────────────────
 
+# ── 图片理解分析（Vision LLM）──────────────────────────────
+
+
+def cmd_image_analyze(params: dict) -> str:
+    """🤖 AI 理解图片内容——描述图片中的场景、物体、文字、氛围。
+
+    自动截屏或指定图片路径，调用视觉 AI 模型分析。
+    支持 Ollama（llava/llama3.2-vision）和 OpenAI（gpt-4o）视觉模型。
+
+    参数:
+        path (str, optional): 图片路径。不传则自动截屏。
+        prompt (str, optional): 分析指令，如"描述这张图""图里有什么文字"。
+            默认自动综合描述。
+    """
+    import base64
+    import urllib.request
+    import urllib.parse
+
+    path = params.get("path", "")
+    prompt = params.get("prompt", "")
+
+    # ── 1. 获取图片 ──
+    if path:
+        if not os.path.exists(path):
+            return f"❌ 图片路径不存在: {path}"
+    else:
+        # 自动截屏
+        path = os.path.expanduser(f"~/Pictures/ka_vision_{int(time.time())}.png")
+        r = subprocess.run(["screencapture", "-x", path],
+                           capture_output=True, timeout=10)
+        if r.returncode != 0 or not os.path.exists(path):
+            return "❌ 截屏失败"
+
+    # ── 2. 读取并编码图片 ──
+    try:
+        with open(path, "rb") as f:
+            img_data = f.read()
+        img_b64 = base64.b64encode(img_data).decode("utf-8")
+    except Exception as e:
+        return f"❌ 读取图片失败: {e}"
+
+    # 清理临时截屏
+    try:
+        if path.startswith(os.path.expanduser("~/Pictures/ka_vision_")):
+            os.remove(path)
+    except Exception:
+        pass
+
+    # ── 3. 构造 Vision 请求 ──
+    from zhixing.config import Config
+
+    config = Config()
+    provider = config.get("llm.provider", "ollama")
+    model = config.get("llm.model", "qwen2.5:7b")
+    ollama_url = config.get("llm.ollama_url", "http://localhost:11434")
+    api_key = config.get("llm.api_key", "")
+    base_url = config.get("llm.base_url", "")
+
+    # 决定用哪个模型做 vision
+    vision_model = config.get("llm.vision_model", "")
+    if not vision_model:
+        known_non_vision = ["qwen2.5", "deepseek", "codellama",
+                            "mistral", "mixtral", "llama2", "gemma"]
+        if provider == "ollama":
+            base_model = model.split(":")[0]
+            if any(base_model.startswith(k) for k in known_non_vision):
+                vision_model = "llava"
+            else:
+                vision_model = model
+        elif provider == "openai":
+            vision_model = "gpt-4o"
+        else:
+            vision_model = model
+
+    # ── 4. 构造 messages ──
+    user_prompt = prompt if prompt else (
+        "请详细描述这张图片的内容，包括：\n"
+        "1. 画面中有什么物体/人物/场景\n"
+        "2. 整体氛围和色调（明亮/昏暗/黄昏/夜晚等）\n"
+        "3. 如果图片中有文字，提取并说明\n"
+        "4. 可能的拍摄环境或时间判断"
+    )
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": user_prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+                },
+            ],
+        }
+    ]
+
+    payload = {
+        "model": vision_model,
+        "messages": messages,
+        "stream": False,
+        "max_tokens": 1024,
+    }
+
+    # ── 5. 发送请求 ──
+    try:
+        if provider == "ollama":
+            url = f"{ollama_url}/v1/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+        else:
+            import openai as _openai
+            client = _openai.OpenAI(api_key=api_key, base_url=base_url or None)
+            result_obj = client.chat.completions.create(**payload)
+            result = result_obj.model_dump()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return (
+                f"❌ 视觉模型 '{vision_model}' 未找到。\n"
+                f"   Ollama 用户请运行: ollama pull {vision_model}\n"
+                f"   或在配置中设置 llm.vision_model"
+            )
+        return f"❌ API 请求失败 (HTTP {e.code}): {e.read().decode()[:200]}"
+    except Exception as e:
+        error_msg = str(e)
+        if "404" in error_msg or "not found" in error_msg.lower():
+            return (
+                f"❌ 视觉模型 '{vision_model}' 未找到。\n"
+                f"   Ollama 用户请运行: ollama pull {vision_model}\n"
+                f"   或在配置中设置 llm.vision_model"
+            )
+        return f"❌ 分析失败: {error_msg}"
+
+    # ── 6. 解析结果 ──
+    try:
+        content = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return "❌ 解析 AI 响应失败"
+
+    if not content or not content.strip():
+        return "❌ AI 未返回分析结果"
+
+    fname = path.rsplit("/", 1)[-1]
+    return f"🖼️ 图片分析 ({fname}):\n\n{content.strip()}"
+
+
 COMMANDS: dict = {
     "screen_record": cmd_screen_record,
     "audio_record": cmd_audio_record,
     "video_info": cmd_video_info,
     "ocr_file": cmd_ocr_file,
     "ocr_pro": cmd_ocr_pro,
+    "image_analyze": cmd_image_analyze,
 }
 
 TOOL_SCHEMAS: dict = {
+    "image_analyze": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "图片路径（可选）。不传则自动截屏",
+            },
+            "prompt": {
+                "type": "string",
+                "description": "分析指令。如「描述这张图」「图里有什么文字」。默认综合描述",
+            },
+        },
+    },
     "ocr_pro": {
         "type": "object",
         "properties": {

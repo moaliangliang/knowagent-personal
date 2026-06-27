@@ -13,6 +13,7 @@ import socket
 import subprocess
 import tempfile
 import time
+import urllib.parse
 from datetime import datetime
 
 import requests
@@ -469,7 +470,202 @@ def cmd_port_check(params: dict | None = None) -> str:
         return f"❌ 端口检测异常: {e}"
 
 
-# ── 命令注册 ───────────────────────────────────────────────
+# ── 新闻搜索 ────────────────────────────────────────────────
+
+_NEWS_CACHE: dict = {}
+_NEWS_CACHE_TIME = 0
+
+
+def cmd_news(params: dict | None = None) -> str:
+    """📰 搜索最新新闻资讯。
+
+    支持中英文关键词搜索，返回标题、来源、摘要。
+    可在配置中设置 news.api_key（NewsAPI）以获得更全面的结果。
+
+    参数:
+        keyword (str, optional): 搜索关键词。不传则返回综合新闻。
+        limit (int, optional): 返回条数，默认 5，最大 10。
+        source (str, optional): 来源，bing(默认) / baidu / newsapi。
+            bing 无需 API Key；newsapi 需设置 news.api_key。
+    """
+    keyword = params.get("keyword", "") if params else ""
+    limit = min(int(params.get("limit", 5)) if params and params.get("limit") else 5, 10)
+    source = params.get("source", "bing") if params else "bing"
+
+    # 中文搜索结果标题
+    title = f"📰 新闻{'搜索: ' + keyword if keyword else '综合'}"
+
+    # 策略 1: NewsAPI（需要 API Key，质量最高）
+    if source == "newsapi":
+        from zhixing.config import Config
+        api_key = Config().get("news.api_key", "")
+        if api_key:
+            result = _fetch_newsapi(keyword, api_key, limit)
+            if result:
+                return title + "\n" + result
+
+    # 策略 2: Bing News（无需 API Key，适用于中英文）
+    # 注意：Bing 可能返回不准确的单条 OG 标题，需要至少 2 条才算成功
+    if source in ("bing", "newsapi"):
+        result = _fetch_bing_news(keyword, limit)
+        # 只有返回 >= 2 条才算有效（避免单条 OG 元数据标题误导）
+        if result and result.count("\n") >= 1:
+            return title + "\n" + result
+
+    # 策略 3: 百度新闻（中国用户，无需 API Key）
+    if source in ("baidu", "bing", "newsapi"):
+        result = _fetch_baidu_news(keyword, limit)
+        if result:
+            return title + "\n" + result
+
+    # 全部失败 — 回退到百度热搜（无 keyword 时已成功，此处给提示兜底）
+    if keyword and source == "bing":
+        # 尝试用热搜结果作为兜底
+        fallback = _fetch_baidu_news("", limit)
+        if fallback:
+            return (
+                f"{title}\n⚠️ 未能获取「{keyword}」的专门搜索结果（网络限制），\n"
+                f"以下为当前热门新闻：\n" + fallback
+            )
+    return (
+        f"{title}\n❌ 无法获取新闻（网络不可用或新闻源被屏蔽）\n"
+        f"可尝试:\n"
+        f"  • 不指定关键词查看热搜: 新闻\n"
+        f"  • 配置 NewsAPI Key: 在 ~/.zhixing/config.yaml 设置 news.api_key\n"
+        f"  • 连接 VPN 后重试\n"
+        f"  • 使用 http_request 命令手动抓取"
+    )
+
+
+def _fetch_bing_news(keyword: str, limit: int) -> str | None:
+    """从 Bing News 搜索新闻。"""
+    try:
+        query = urllib.parse.quote(keyword) if keyword else ""
+        url = f"https://www.bing.com/news/search?q={query}&mkt=zh-CN"
+        if not keyword:
+            url = "https://www.bing.com/news?mkt=zh-CN"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        }
+        resp = requests.get(url, headers=headers, timeout=8)
+        resp.raise_for_status()
+
+        lines = []
+        seen = set()
+        html = resp.text
+
+        # 多模式提取标题（按优先级）
+        patterns = [
+            (r'aria-label="([^"]{10,})"', None),    # 新闻卡片标签
+            (r'data-title="([^"]+)"', None),          # 数据标题属性
+            (r'<a[^>]*class="[^"]*title[^"]*"[^>]*>(.*?)</a>', None),  # 标题链接
+        ]
+
+        for pat, _ in patterns:
+            for m in re.findall(pat, html):
+                title = re.sub(r"<[^>]+>", "", str(m)).strip()
+                if title and title not in seen and len(title) > 5 and len(title) < 120:
+                    seen.add(title)
+                    lines.append(f"  • {title}")
+                    if len(lines) >= limit:
+                        break
+            if len(lines) >= limit:
+                break
+
+        return "\n".join(lines[:limit]) if lines else None
+    except Exception:
+        return None
+
+
+def _parse_bing_json(html: str, limit: int) -> str | None:
+    """从 Bing News HTML 中提取 JSON 数据。"""
+    import re as _re
+    lines = []
+    # 尝试匹配 data-card 或类似的结构
+    cards = _re.findall(r'data-card="(.*?)"', html)
+    if cards:
+        import html as _html
+        for card in cards[:limit]:
+            text = _html.unescape(card)
+            lines.append(f"  • {text[:100]}")
+    return "\n".join(lines) if lines else None
+
+
+def _fetch_baidu_news(keyword: str, limit: int) -> str | None:
+    """从百度/搜狗搜索新闻。"""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        }
+        if not keyword:
+            # 百度热搜榜
+            resp = requests.get(
+                "https://top.baidu.com/board?tab=realtime",
+                headers=headers, timeout=10,
+            )
+            titles = re.findall(r'"word":"([^"]+)"', resp.text)
+            if titles:
+                lines = [f"  {i+1}. {t}" for i, t in enumerate(titles[:limit])]
+                return "🔥 百度热搜:\n" + "\n".join(lines)
+        else:
+            # 搜狗新闻搜索（中国用户，无需 API Key）
+            query = urllib.parse.quote(keyword)
+            resp = requests.get(
+                f"https://news.sogou.com/news?query={query}&sort=1",
+                headers=headers, timeout=10,
+            )
+            titles = re.findall(r'<h3[^>]*>.*?<a[^>]*>(.*?)</a>', resp.text, re.DOTALL)
+            if titles:
+                lines = []
+                seen = set()
+                for t in titles:
+                    clean = re.sub(r'<[^>]+>', '', t).strip()
+                    if clean and clean not in seen and len(clean) > 5:
+                        seen.add(clean)
+                        lines.append(f"  • {clean}")
+                        if len(lines) >= limit:
+                            break
+                if lines:
+                    src = f"🔍 搜狗新闻搜索: {keyword}"
+                    return src + "\n" + "\n".join(lines)
+        return None
+    except Exception:
+        return None
+
+
+def _fetch_newsapi(keyword: str, api_key: str, limit: int) -> str | None:
+    """从 NewsAPI 获取新闻（需 API Key）。"""
+    try:
+        if keyword:
+            url = f"https://newsapi.org/v2/everything?q={urllib.parse.quote(keyword)}&pageSize={limit}&language=zh&sortBy=publishedAt"
+        else:
+            url = f"https://newsapi.org/v2/top-headlines?country=cn&pageSize={limit}"
+        resp = requests.get(url, headers={"X-Api-Key": api_key}, timeout=10)
+        data = resp.json()
+        if data.get("status") != "ok":
+            return None
+        articles = data.get("articles", [])
+        if not articles:
+            return None
+        lines = []
+        for a in articles[:limit]:
+            title_text = a.get("title", "")
+            source_name = a.get("source", {}).get("name", "")
+            desc = a.get("description", "")
+            line = f"  • {title_text}"
+            if source_name:
+                line += f"\n    [{source_name}]"
+            if desc and len(desc) < 100:
+                line += f" {desc}"
+            lines.append(line)
+        return "\n".join(lines)
+    except Exception:
+        return None
 
 COMMANDS: dict = {
     "my_ip": cmd_my_ip,
@@ -479,6 +675,7 @@ COMMANDS: dict = {
     "whois": cmd_whois,
     "ping": cmd_ping,
     "port_check": cmd_port_check,
+    "news": cmd_news,
 }
 
 TOOL_SCHEMAS: dict = {
@@ -489,6 +686,14 @@ TOOL_SCHEMAS: dict = {
     "speedtest": {
         "type": "object",
         "properties": {},
+    },
+    "news": {
+        "type": "object",
+        "properties": {
+            "keyword": {"type": "string", "description": "搜索关键词。不传返回综合新闻"},
+            "limit": {"type": "integer", "description": "返回条数（1-10，默认 5）"},
+            "source": {"type": "string", "enum": ["bing", "baidu", "newsapi"], "description": "新闻源: bing(默认), baidu, newsapi（需配置 API Key）"},
+        },
     },
     "http_request": {
         "type": "object",

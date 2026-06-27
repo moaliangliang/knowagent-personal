@@ -70,7 +70,7 @@ def test_notification_defaults():
     """notification should work with empty params."""
     result = COMMANDS["notification"]({})
     assert isinstance(result, str)
-    assert "Mac Agent" in result
+    assert "知行" in result
 
 
 def test_file_list_default():

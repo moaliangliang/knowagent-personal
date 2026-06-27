@@ -77,6 +77,21 @@ NL_RULES = [
         ("clipboard_pro", {"action": "search", "query": kw or ""})
     ) if kw else ("clipboard_pro", {"action": "stats"})),
     (["剪贴板统计", "clipboard stats"], lambda _: ("clipboard_pro", {"action": "stats"})),
+    # 新闻搜索规则（必须放在通用"搜索"规则之前）
+    (["最新消息", "最新资讯", "今日新闻", "今日热点", "有什么新闻", "最近新闻"], lambda kw: ("news", {"keyword": kw}) if kw else ("news", {})),
+    (["热搜", "热搜榜", "百度热搜", "微博热搜", "热点"], lambda _: ("news", {"source": "baidu"})),
+    (["新闻", "资讯", "消息", "头条"], lambda kw: ("news", {"keyword": kw}) if kw else ("news", {})),
+    # 财经/体育/兴趣新闻搜索（通用规则，匹配具体话题如"美股行情""世界杯"）
+    # 注意：不同意图的关键词必须分开放，避免 _match_nl_rules 重复移除
+    (["美股行情"], lambda kw: ("news", {"keyword": "美股"})),
+    (["港股行情", "股市行情", "今日行情", "实时行情"], lambda kw: ("news", {"keyword": kw or "股市"})),
+    (["大盘", "A股", "美股", "港股"], lambda kw: ("news", {"keyword": kw or "股市"})),
+    (["行情", "股票", "股市", "基金", "理财"], lambda kw: ("news", {"keyword": kw or "股票"})),
+    (["汇率", "黄金", "原油"], lambda kw: ("news", {"keyword": kw}) if kw else ("news", {"keyword": "黄金"})),
+    (["比特币", "加密货币", "区块链", "数字货币"], lambda kw: ("news", {"keyword": kw or "比特币"})),
+    (["世界杯"], lambda kw: ("news", {"keyword": "世界杯"})),
+    (["NBA", "欧冠", "英超", "西甲", "中超", "CBA", "意甲", "德甲"],
+     lambda kw: ("news", {"keyword": kw}) if kw else ("news", {"keyword": "体育"})),
     # Pro OCR 规则
     (["批量识别", "批量ocr", "目录识别", "ocr pro", "ocr目录"], lambda kw: (
         ("ocr_pro", {"action": "dir", "path": kw or "~"})
@@ -173,6 +188,10 @@ WORKFLOW_PRESETS = {
     "摸鱼预警": [
         {"cmd": "screenshot", "desc": "截屏"},
         {"cmd": "notification", "params": {"text": "注意! 老板来了!"}, "desc": "警告"},
+    ],
+    "王力宏": [
+        {"cmd": "music_search_online", "params": {"keyword": "王力宏"}, "desc": "搜索并播放王力宏"},
+        {"cmd": "notification", "params": {"text": "正在播放王力宏的歌曲"}, "desc": "通知"},
     ],
 }
 
@@ -458,20 +477,58 @@ class PersonalAgentREPL(cmd.Cmd):
         t = text.lower()
         if any(k in t for k in ["你是谁", "你叫什么", "what are you"]):
             print(f"{Color.bold('🤖 知行 ZhiXing')} — 你的本地 Mac 桌面 AI 助手")
-            print(f"{Color.dim('可以控制音乐、截图、OCR识别、UI自动化、查看系统状态等')}")
+            print(f"  {Color.dim('可以控制音乐、截图、OCR识别、UI自动化、查看系统状态等')}")
+            print(f"  {Color.dim('输入 help 查看所有命令')}")
         elif any(k in t for k in ["能力", "能做什么", "功能", "capabilities"]):
-            print(f"{Color.bold(f'📋 我具备 {len(COMMANDS)} 个命令:')}")
+            print(f"{Color.bold(f'📋 我具备 {len(COMMANDS)} 个本地命令:')}")
             self.do_help("")
         elif any(k in t for k in ["大模型", "模型", "ai", "llm"]):
             print(f"{Color.bold('🧠 AI 引擎:')}")
-            print(f"  对话: Ollama (本地)")
-            print(f"  命令执行: 本地离线 ({len(COMMANDS)} 个内置命令)")
-            print(f"  OCR: macOS 原生 Vision 框架")
-            print(f"  UI 自动化: Swift AX API")
+            print(f"  {'● 已连接' if self.agent_available else '○ 未连接'} Ollama (本地)")
+            print(f"  ● 命令执行: 本地离线 ({len(COMMANDS)} 个内置命令)")
+            print(f"  ● OCR: macOS 原生 Vision 框架")
+            print(f"  ● UI 自动化: Swift AX API")
+            if not self.agent_available:
+                print(f"\n{Color.dim('安装: brew install ollama && ollama serve')}")
+                print(f"{Color.dim('拉取模型: ollama pull qwen2.5:7b')}")
+        elif any(k in t for k in ["你好", "hi", "hello", "在吗", "在不在"]):
+            print(f"{Color.bold('👋 你好！')} 我是{Color.bold(' 知行 ZhiXing')}")
+            print(f"  你可以直接对我说命令，比如：")
+            print(f"    {Color.dim('系统状态  截个屏  播放音乐  帮忙翻译  待办列表')}")
+            print(f"  或者先 {Color.dim('help')} 查看全部功能")
+        elif any(k in t for k in ["谢谢", "感谢", "多谢", "thanks", "thank"]):
+            print(f"{Color.bold('😊 不客气！')} 有什么需要随时说～")
+        elif any(k in t for k in ["再见", "拜拜", "bye", "goodbye", "回头"]):
+            print(f"{Color.bold('👋 再见！')} 需要时输入命令或直接说话就行")
+        elif any(k in t for k in ["天气", "今天天气"]):
+            print(f"🌤️ 我不支持联网查天气，但你可以试试：")
+            print(f"  {Color.dim('打开 天气')}  — 启动 macOS 天气 App")
+        elif any(w in t for w in ["时间", "几点", "日期", "今天几号"]):
+            import datetime as _dt
+            now = _dt.datetime.now()
+            weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            print(f"📅 现在是 {now.strftime('%Y年%m月%d日')} {weekdays[now.weekday()]}")
+            print(f"⏰ {now.strftime('%H:%M:%S')}")
+        elif any(k in t for k in ["笑话", "讲个笑话", "joke", "幽默"]):
+            import random as _r
+            jokes = [
+                "为什么程序员总是分不清万圣节和圣诞节？因为 Oct 31 == Dec 25。",
+                "产品经理：这个需求很简单。程序员：那你自己写。",
+                "AI 不会取代你的工作，但会用 AI 的人会。——除非你连 AI 都不用。",
+            ]
+            print(f"😄 {_r.choice(jokes)}")
         else:
-            print(f"{Color.warn('🤔 没理解你的意思')}")
-            print(f"{Color.dim('试试直接说命令: 播放周杰伦的歌 / 系统状态 / 截图 / 帮助')}")
-            print(f"{Color.dim('或者确保 Ollama 正在运行以获得 AI 对话能力')}")
+            # 通用回退：有 ollama 时提示可用对话，否则给友好引导
+            if self.agent_available:
+                # 如果 agent 可用但 parse_natural 没匹配到，说明应该是闲聊
+                # 再试一次走 agent 回复
+                self._chat_with_agent(text, time.time())
+            else:
+                print(f"{Color.dim('💡 我没理解「')}{text}{Color.dim('」这个命令')}")
+                print(f"  {Color.bold('你可以:')}")
+                print(f"    • 直接说命令: {Color.dim('系统状态 / 截屏 / 播放音乐 / 通知 记得写周报')}")
+                print(f"    • 输入 {Color.dim('help')} 查看全部命令")
+                print(f"    • 启动 Ollama 获得 AI 对话能力: {Color.dim('ollama serve && ollama pull qwen2.5:7b')}")
 
     def _chat_with_agent(self, text, start):
         """Use the local Agent (Ollama) for conversation + tool calling."""
