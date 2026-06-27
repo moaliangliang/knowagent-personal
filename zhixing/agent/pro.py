@@ -16,13 +16,13 @@ from zhixing.config import Config
 # ── 定价与购买链接 ──────────────────────────────
 
 PRO_PRICE_CN = "¥99/年 · ¥299 终身"
-PRO_URL_CN = "https://afdian.com/a/你的爱发电ID"
+PRO_URL_CN = "https://afdian.com/a/moaliangliang"
 
 PRO_PRICE_EN = "$19/year · $49 lifetime"
-PRO_URL_EN = "https://你的产品.lemonsqueezy.com"
+PRO_URL_EN = "https://moaliangliang.lemonsqueezy.com"
 
-# License 验证服务器（私有部署）
-LICENSE_SERVER = os.environ.get("KA_LICENSE_SERVER", "http://124.220.24.71")
+# License 验证服务器（私有部署，GitHub Pages 上的静态验证）
+LICENSE_SERVER = os.environ.get("KA_LICENSE_SERVER", "https://moaliangliang.github.io/zhixing-license")
 
 
 def _purchase_url(lang: str = "zh") -> str:
@@ -52,6 +52,27 @@ PRO_FEATURES_EN: dict[str, str] = {
 TRIAL_MAX_USES = 5
 
 
+# ── License Key 格式校验 ─────────────────────────
+
+
+def _validate_key(key: str) -> bool:
+    """验证 License Key 格式合法性。
+
+    格式: KA-PRO-XXXXXXXXXXXXXXXXXXXX
+    本地校验格式，远程服务器做最终验证。
+    """
+    import re
+    key = key.strip()
+    # 格式：KA-PRO- 开头 + 20 位大写字母数字
+    if re.match(r'^KA-PRO-[A-Z0-9]{20}$', key):
+        # 简单校验和：前19位字符的 ASCII 和末位 = 第20位数字
+        seg = key.split("-")[2]
+        body = seg[:-1]
+        checksum = sum(ord(c) for c in body) % 10
+        return int(seg[-1]) == checksum
+    return False
+
+
 # ── License 校验（远程验证） ────────────────────
 
 
@@ -70,7 +91,6 @@ def _remote_validate(key: str) -> bool:
         # 连不上服务器时：离线环境使用缓存
         pass
     except ImportError:
-        # requests 未安装
         pass
     except Exception:
         pass
@@ -79,7 +99,6 @@ def _remote_validate(key: str) -> bool:
 
 def is_pro() -> bool:
     """判断当前是否为 Pro 版本。"""
-    # 环境变量覆盖（开发者/测试用）
     if os.environ.get("ZHIXING_PRO") == "1":
         return True
 
@@ -87,6 +106,9 @@ def is_pro() -> bool:
         config = Config()
         key = config.get("pro.license_key", "")
         if not key:
+            return False
+        # 先本地校验格式，再远程验证
+        if not _validate_key(key):
             return False
         return _remote_validate(key)
     except Exception:
