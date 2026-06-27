@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("ka", {
   toggle: () => ipcRenderer.invoke("toggle-window"),
   hide: () => ipcRenderer.invoke("hide-window"),
   hideNoFloat: () => ipcRenderer.invoke("hide-window-nofloat"),
+  maximize: () => ipcRenderer.invoke("maximize-window"),
 
   // 系统
   platform: () => ipcRenderer.invoke("get-platform"),

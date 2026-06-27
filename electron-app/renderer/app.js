@@ -122,6 +122,7 @@ const sendBtn = $("send-btn");
 // ── 标题栏 ────────────────────────────────────
 
 $("btn-hide").onclick = () => window.ka.hide();
+$("btn-maximize").onclick = () => window.ka.maximize();
 $("btn-close").onclick = () => window.ka.hide();
 
 // Escape 键隐藏窗口

@@ -562,6 +562,16 @@ ipcMain.handle("update-download", () => {
   }
 });
 
+// 窗口最大化
+ipcMain.handle("maximize-window", () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow.maximize();
+  }
+});
+
 // ── 应用生命周期 ─────────────────────────────────
 
 app.whenReady().then(() => {
