@@ -152,7 +152,7 @@ function _applyI18n() {
   if (_lang !== "en") return;
   // i18n 已通过 _t() 模板文字处理，这里做运行时修复
   document.querySelectorAll("#ka-msgs .ka-bot:first-child").forEach(el => {
-    if (el.textContent.includes("知行 助手")) el.textContent = "🤖 ZhiXing Assistant";
+    if (el.textContent.includes("知行 助手")) el.textContent = "⬡ ZhiXing Assistant";
   });
 }
 
@@ -161,10 +161,10 @@ function injectUI() {
   const w = document.createElement("div");
   w.id = "ka-wrapper";
   w.innerHTML = `
-  <button id="ka-btn">🤖<span id="ka-badge">0</span></button>
+  <button id="ka-btn">⬡<span id="ka-badge">0</span></button>
   <div id="ka-panel">
     <div id="ka-header">
-      <span id="ka-title">🤖 知行</span>
+      <span id="ka-title">⬡ 知行</span>
       <button id="ka-close">✕</button>
     </div>
     <div id="ka-status"><span class="ka-off">○ ${_t("未连接", "Disconnected")}</span></div>
@@ -172,7 +172,7 @@ function injectUI() {
       <div class="ka-tab active" data-tab="chat">💬 ${_t("对话", "Chat")}</div>
       <div class="ka-tab" data-tab="todo">📋 ${_t("待办", "Tasks")}</div>
     </div>
-    <div id="ka-msgs"><div class="ka-msg ka-bot">🤖 ${_t("知行 助手", "ZhiXing Assistant")}</div></div>
+    <div id="ka-msgs"><div class="ka-msg ka-bot">⬡ ${_t("知行 助手", "ZhiXing Assistant")}</div></div>
     <div id="ka-todo"><div id="ka-todo-loading" style="text-align:center;color:#aaa;padding:20px;">${_t("加载中...", "Loading...")}</div></div>
     <div id="ka-input-wrap">
       <div id="ka-suggest"></div>

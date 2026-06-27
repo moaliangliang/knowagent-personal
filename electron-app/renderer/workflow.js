@@ -598,11 +598,11 @@ function showConfig(idx) {
         <span style="font-size:11px;color:#999;margin-left:auto;">#${step.id}</span>
       </div>
       <div class="wf-field"><label>${_tw("命令", "Cmd")}</label>
-        <input class="wf-input" value="${escapeHtml(cfg.cmd || "")}" oninput="window._wfUpdateConfig(${idx}, 'cmd', this.value)"></div>
+        <input class="wf-input" id="wf-cfg-cmd" value="${escapeHtml(cfg.cmd || "")}" oninput="window._wfUpdateConfig(${idx}, 'cmd', this.value)"></div>
       <div class="wf-field"><label>${_tw("说明", "Desc")}</label>
-        <input class="wf-input" value="${escapeHtml(cfg.desc || "")}" oninput="window._wfUpdateConfig(${idx}, 'desc', this.value)"></div>
+        <input class="wf-input" id="wf-cfg-desc" value="${escapeHtml(cfg.desc || "")}" oninput="window._wfUpdateConfig(${idx}, 'desc', this.value)"></div>
       <div class="wf-field"><label>${_tw("关键词", "Keyword")}</label>
-        <input class="wf-input" value="${escapeHtml(cfg.keyword || "")}" oninput="window._wfUpdateConfig(${idx}, 'keyword', this.value)"></div>
+        <input class="wf-input" id="wf-cfg-keyword" value="${escapeHtml(cfg.keyword || "")}" oninput="window._wfUpdateConfig(${idx}, 'keyword', this.value)"></div>
       <div class="wf-field"><label>${_tw("公司", "Company")}</label>
         <input class="wf-input" value="${escapeHtml(cfg.company || "")}" oninput="window._wfUpdateConfig(${idx}, 'company', this.value)"></div>
       <div class="wf-field"><label>${_tw("名称", "Name")}</label>
@@ -674,6 +674,46 @@ function escapeHtml(s) {
 
 // ── 全局回调（给 DOM 事件用） ──────────────────
 
+// 字段校验规则
+const _VALIDATORS = {
+  cron: (v) => {
+    if (!v) return true;
+    const parts = v.trim().split(/\s+/);
+    if (parts.length !== 5) return { ok: false, msg: _tw("需要 5 段，如: 0 9 * * *", "Need 5 parts, e.g. 0 9 * * *") };
+    return true;
+  },
+  value: (v) => {
+    if (!v) return true;
+    if (v.startsWith("http://") || v.startsWith("https://")) return true;
+    return { ok: false, msg: _tw("需要以 http:// 或 https:// 开头", "Must start with http:// or https://") };
+  },
+  seconds: (v) => {
+    const n = parseInt(v);
+    if (isNaN(n) || n < 1) return { ok: false, msg: _tw("至少 1 秒", "Min 1 second") };
+    if (n > 86400) return { ok: false, msg: _tw("不超过 86400 秒(24h)", "Max 86400 seconds") };
+    return true;
+  },
+  timeout: (v) => {
+    const n = parseInt(v);
+    if (isNaN(n) || n < 1) return { ok: false, msg: _tw("至少 1 秒", "Min 1 second") };
+    if (n > 600) return { ok: false, msg: _tw("不超过 600 秒(10分钟)", "Max 600 seconds") };
+    return true;
+  },
+  webhook_url: (v) => {
+    if (!v) return true;
+    if (!v.startsWith("/")) return { ok: false, msg: _tw("需要以 / 开头", "Must start with /") };
+    return true;
+  },
+};
+
+function _validate(field, value) {
+  const fn = _VALIDATORS[field];
+  if (!fn) return { ok: true, msg: "" };
+  const result = fn(value);
+  if (result === true) return { ok: true, msg: "" };
+  return result;
+}
+
 window._wfSelectStep = (idx) => selectStep(idx);
 window._wfRemoveStep = (idx) => {
   removeStep(idx);
@@ -687,6 +727,19 @@ window._wfUpdateConfig = (idx, key, val) => {
   if (steps[idx]) {
     steps[idx].config[key] = val;
     renderSteps();
+    // 实时校验反馈
+    const input = document.getElementById(`wf-cfg-${key}`);
+    if (input) {
+      const v = _validate(key, val);
+      if (v.ok) {
+        input.style.borderColor = "#28c840";
+        input.style.background = "#f0fdf4";
+      } else {
+        input.style.borderColor = "#ef4444";
+        input.style.background = "#fef2f2";
+        input.title = v.msg;
+      }
+    }
   }
 };
 

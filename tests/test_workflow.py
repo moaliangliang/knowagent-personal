@@ -30,9 +30,9 @@ def test_workflow_commands_registered():
 def test_workflow_presets():
     """验证 CLI 预设工作流存在"""
     from zhixing.ui.cli import WORKFLOW_PRESETS
-    assert "系统报告" in WORKFLOW_PRESETS, "缺少预设: 系统报告"
-    assert "音乐时光" in WORKFLOW_PRESETS, "缺少预设: 音乐时光"
-    assert len(WORKFLOW_PRESETS) >= 3, f"预设数不足: {len(WORKFLOW_PRESETS)}"
+    assert "📊 系统报告" in WORKFLOW_PRESETS, "缺少预设: 系统报告"
+    assert "🎵 音乐时光" in WORKFLOW_PRESETS, "缺少预设: 音乐时光"
+    assert len(WORKFLOW_PRESETS) >= 20, f"预设数不足: {len(WORKFLOW_PRESETS)}"
     print(f"✅ 预设工作流: {list(WORKFLOW_PRESETS.keys())}")
 
 
@@ -241,7 +241,7 @@ def test_workflow_total_steps():
     """验证工作流命令总数 >= 预期"""
     from zhixing.ui.cli import WORKFLOW_PRESETS
     total = sum(len(steps) for steps in WORKFLOW_PRESETS.values())
-    assert total >= 6, f"预设总步骤数不足: {total}"
+    assert total >= 30, f"预设总步骤数不足: {total}"
     print(f"✅ 预设总步骤数: {total}")
 
 

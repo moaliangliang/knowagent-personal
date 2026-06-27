@@ -78,38 +78,72 @@ body {
   </div>
 </div>
 <script>
-const API = "http://localhost:9511";
-const $ = id => document.getElementById(id);
+// ── WebSocket 直连 server.py ──
+const WS_URL = "ws://localhost:9510";
+let ws = null;
+let pending = {};
+let reqId = 0;
+
+function wsSend(payload) {
+  return new Promise((resolve, reject) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      reject("未连接服务器");
+      return;
+    }
+    const id = ++reqId;
+    pending[id] = {
+      resolve,
+      reject,
+      timer: setTimeout(() => { delete pending[id]; reject("超时"); }, 10000),
+    };
+    try {
+      ws.send(JSON.stringify({ ...payload, requestId: id }));
+    } catch (e) {
+      clearTimeout(pending[id].timer);
+      delete pending[id];
+      reject(e.message);
+    }
+  });
+}
+
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    document.getElementById("status-text").innerHTML = '<span class="online">●</span> 已连接';
+  };
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const rid = data.requestId;
+      if (rid && pending[rid]) {
+        clearTimeout(pending[rid].timer);
+        pending[rid].resolve(data);
+        delete pending[rid];
+      }
+    } catch (e) {}
+  };
+  ws.onclose = () => {
+    ws = null;
+    document.getElementById("status-text").innerHTML = '<span class="offline">○</span> 未连接';
+    setTimeout(connectWS, 3000);
+  };
+  ws.onerror = () => { if (ws) ws.close(); };
+}
+connectWS();
+
+const $ = (id) => document.getElementById(id);
 const input = $("input-box");
 const results = $("results");
 let allCmds = [];
 let selectedIdx = -1;
 
-// 连接检测
-fetch(API, { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({action:"ping"}) })
-  .then(r => r.json())
-  .then(d => {
-    if (d.type === "pong") {
-      $("status-text").innerHTML = '<span class="online">●</span> 已连接';
-      if (d.cmds) $("cmd-count").textContent = d.cmds + " 命令";
-    }
-  })
-  .catch(() => {
-    $("status-text").innerHTML = '<span class="offline">○</span> 未连接';
-  });
-
 // 发送命令
 async function execCmd(text) {
   try {
-    const resp = await fetch(API, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({action:"command", params:{cmd: text}}),
-    });
-    const data = await resp.json();
+    const data = await wsSend({ action: "command", params: { cmd: text } });
     return data.data || "(空)";
-  } catch(e) {
-    return "❌ 连接失败";
+  } catch (e) {
+    return "❌ " + e;
   }
 }
 
@@ -123,47 +157,43 @@ input.oninput = async () => {
     return;
   }
 
-  // 显示加载
   results.innerHTML = '<div style="padding:20px;text-align:center;color:#ccc;">⏳ 搜索中...</div>';
 
   try {
-    const resp = await fetch(API, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({action:"suggest", params:{cmd: text}}),
-    });
-    const data = await resp.json();
+    // 用 suggest action 获取建议（目前 server.py 不支持 suggest，走 help 回退）
     let items = [];
-    if (data.type === "suggestions" && data.data) {
-      items = data.data.slice(0, 8).map(s => ({ label: s, type: "cmd" }));
+    try {
+      const suggestData = await wsSend({ action: "suggest", params: { cmd: text } });
+      if (suggestData.type === "suggestions" && suggestData.data) {
+        items = suggestData.data.slice(0, 8).map((s) => ({ label: s, type: "cmd" }));
+      }
+    } catch (e) {}
+    if (items.length === 0) {
+      items = [{ label: text, type: "action" }];
+    } else {
+      items = [{ label: text, type: "action" }, ...items];
     }
-
-    // 添加操作入口
-    const actionItems = [
-      { label: text, type: "action" },
-    ];
-    if (text.startsWith("帮我") || text.startsWith("搜索")) {
-      items = [];
-    }
-    items = [...actionItems, ...items];
 
     if (items.length === 0) {
       results.innerHTML = '<div style="padding:20px;text-align:center;color:#ccc;font-size:13px;">无匹配命令</div>';
       return;
     }
 
-    results.innerHTML = items.map((item, i) => `
-      <div class="result-item ${i === 0 ? 'active' : ''}" data-idx="${i}">
-        <span class="result-icon" style="background:${item.type === 'action' ? '#667eea' : '#f0f4ff'}">
-          ${item.type === 'action' ? '▶' : '⚡'}
+    results.innerHTML = items
+      .map(
+        (item, i) => `
+      <div class="result-item ${i === 0 ? "active" : ""}" data-idx="${i}">
+        <span class="result-icon" style="background:${item.type === "action" ? "#667eea" : "#f0f4ff"}">
+          ${item.type === "action" ? "▶" : "⚡"}
         </span>
         <span class="result-name">${item.label}</span>
-        <span class="result-desc">${item.type === 'action' ? '回车执行' : '命令'}</span>
-      </div>
-    `).join("");
+        <span class="result-desc">${item.type === "action" ? "回车执行" : "命令"}</span>
+      </div>`
+      )
+      .join("");
 
     selectedIdx = 0;
-    results.querySelectorAll(".result-item").forEach(el => {
+    results.querySelectorAll(".result-item").forEach((el) => {
       el.onclick = async () => {
         const idx = parseInt(el.dataset.idx);
         const item = items[idx];
@@ -171,7 +201,7 @@ input.oninput = async () => {
         window.electronAPI?.showResult(result);
       };
     });
-  } catch(e) {
+  } catch (e) {
     results.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">❌ 连接失败</div>';
   }
 };

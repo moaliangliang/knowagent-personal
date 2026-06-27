@@ -26,15 +26,15 @@ body {
 
 #titlebar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
   flex-shrink: 0;
   user-select: none;
   -webkit-app-region: drag;
   cursor: grab;
+  gap: 8px;
 }
 
 #titlebar.drag-active {
@@ -43,35 +43,65 @@ body {
 
 #title-text {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   -webkit-app-region: drag;
   flex: 1;
-  padding: 4px 0;
+  padding: 2px 0;
   cursor: grab;
 }
 
+/* ── 交通灯按钮 ─────────────────── */
+
 #titlebar-btns {
   display: flex;
-  gap: 6px;
+  gap: 7px;
+  align-items: center;
+  -webkit-app-region: no-drag;
+  padding-left: 2px;
 }
 
 .tb-btn {
   -webkit-app-region: no-drag;
-  background: rgba(255,255,255,0.15);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   border: none;
-  color: #fff;
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
   cursor: pointer;
-  font-size: 12px;
+  position: relative;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background .15s;
+  transition: none;
 }
 
-.tb-btn:hover { background: rgba(255,255,255,0.3); }
+/* 默认颜色（macOS 交通灯） */
+.tb-close   { background: #ff5f57; border: 1px solid #e0443e; }
+.tb-minimize { background: #febc2e; border: 1px solid #dda123; }
+
+/* 悬停时显示图标 */
+.tb-btn::after {
+  content: "";
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(0,0,0,0.5);
+  font-weight: 700;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.tb-close::after   { content: "✕"; font-size: 7px; }
+.tb-minimize::after { content: "─"; font-size: 7px; }
+.tb-zoom::after     { content: "⤢"; font-size: 7px; }
+
+.tb-btn:hover::after { opacity: 1; }
+
+/* 悬停亮度增强（保留颜色识别） */
+.tb-close:hover   { filter: brightness(1.1); }
+.tb-minimize:hover { filter: brightness(1.1); }
 
 /* ── 状态栏 ─────────────────────── */
 

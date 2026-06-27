@@ -81,6 +81,12 @@ NL_RULES = [
     (["最新消息", "最新资讯", "今日新闻", "今日热点", "有什么新闻", "最近新闻"], lambda kw: ("news", {"keyword": kw}) if kw else ("news", {})),
     (["热搜", "热搜榜", "百度热搜", "微博热搜", "热点"], lambda _: ("news", {"source": "baidu"})),
     (["新闻", "资讯", "消息", "头条"], lambda kw: ("news", {"keyword": kw}) if kw else ("news", {})),
+    # 自然语言创建工作流
+    (["创建一个工作流", "创建个工作流", "配置工作流", "新建工作流", "帮我做个工作流", "帮我创建一个"],
+     lambda kw: ("workflow_create", {"text": kw}) if kw else None),
+    # 引导式创建工作流（无具体描述时触发交互模式）
+    (["创建工作流", "引导创建工作流", "create_wf", "create workflow", "新建工作流"],
+     lambda _: ("create_wf", {})),
     # 财经/体育/兴趣新闻搜索（通用规则，匹配具体话题如"美股行情""世界杯"）
     # 注意：不同意图的关键词必须分开放，避免 _match_nl_rules 重复移除
     (["美股行情"], lambda kw: ("news", {"keyword": "美股"})),
@@ -179,24 +185,208 @@ def _parse_mail_date(text: str) -> str:
 
 
 WORKFLOW_PRESETS = {
-    "系统报告": [
+    # ═══════════════════════════════════════════════
+    # 一、系统工具 (8)
+    # ═══════════════════════════════════════════════
+    "📊 系统报告": [
         {"cmd": "system_status", "desc": "检查系统"},
         {"cmd": "battery_status", "desc": "检查电池"},
         {"cmd": "wifi_status", "desc": "检查网络"},
         {"cmd": "calendar", "desc": "今日日程"},
     ],
-    "音乐时光": [
+    "🔋 健康检查": [
+        {"cmd": "battery_health", "desc": "电池健康"},
+        {"cmd": "sensor_temp", "desc": "CPU温度"},
+        {"cmd": "disk_monitor", "desc": "磁盘空间"},
+        {"cmd": "system_status", "desc": "系统状态"},
+    ],
+    "🧹 磁盘清理": [
+        {"cmd": "disk_monitor", "desc": "检查磁盘"},
+        {"cmd": "file_search", "params": {"pattern": "*.tmp"}, "desc": "查找临时文件"},
+        {"cmd": "notification", "params": {"text": "磁盘检查完成"}, "desc": "通知"},
+    ],
+    "🔒 安全检查": [
+        {"cmd": "wifi_status", "desc": "WiFi安全"},
+        {"cmd": "process", "desc": "进程检查"},
+        {"cmd": "my_ip", "desc": "公网IP"},
+        {"cmd": "notification", "params": {"text": "安全检查完成"}, "desc": "通知"},
+    ],
+    "⏰ 定时健康检查": [
+        {"cmd": "system_status", "desc": "检查系统", "loop": 5, "wait": 3600},
+        {"cmd": "notification", "params": {"text": "5轮健康检查完成"}, "desc": "完成通知"},
+    ],
+    "🍅 番茄工作法": [
+        {"cmd": "timer", "params": {"minutes": 25}, "desc": "开始25分钟"},
+        {"cmd": "notification", "params": {"text": "🍅 番茄钟完成! 休息5分钟"}, "desc": "休息提醒"},
+    ],
+    "💻 开发环境检查": [
+        {"cmd": "process", "desc": "运行进程"},
+        {"cmd": "docker", "desc": "Docker状态"},
+        {"cmd": "disk_monitor", "desc": "磁盘空间"},
+    ],
+    "👋 下班准备": [
+        {"cmd": "todo_list", "desc": "待办检查"},
+        {"cmd": "clipboard_history", "desc": "保存剪贴板"},
+        {"cmd": "system_volume", "params": {"level": 0}, "desc": "静音"},
+        {"cmd": "music_stop", "desc": "停止音乐"},
+        {"cmd": "notification", "params": {"text": "下班了，明天见!"}, "desc": "下班提醒"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 二、日常办公 (8)
+    # ═══════════════════════════════════════════════
+    "☀️ 晨间检查": [
+        {"cmd": "system_status", "desc": "系统状态"},
+        {"cmd": "calendar", "desc": "今日日程"},
+        {"cmd": "todo_list", "desc": "待办事项"},
+        {"cmd": "notification", "params": {"text": "☀️ 早上好! 新的一天开始了"}, "desc": "晨间问候"},
+    ],
+    "📧 邮件办公": [
+        {"cmd": "mail_master", "desc": "读取邮件"},
+        {"cmd": "calendar", "desc": "查看日程"},
+        {"cmd": "todo_list", "desc": "待办事项"},
+        {"cmd": "clipboard_history", "desc": "剪贴板历史"},
+    ],
+    "📋 待办同步": [
+        {"cmd": "todo_import", "desc": "导入提醒事项"},
+        {"cmd": "todo_list", "desc": "查看待办"},
+    ],
+    "🎯 每日目标": [
+        {"cmd": "notification", "params": {"text": "今天最重要的三件事是什么?"}, "desc": "目标提醒"},
+        {"cmd": "todo_list", "desc": "查看待办"},
+        {"cmd": "calendar", "desc": "今日日程"},
+    ],
+    "📝 会议准备": [
+        {"cmd": "calendar", "desc": "今日会议"},
+        {"cmd": "todo_list", "desc": "待办检查"},
+        {"cmd": "notification", "params": {"text": "会议准备就绪"}, "desc": "准备完成"},
+    ],
+    "🔤 翻译助手": [
+        {"cmd": "translate", "desc": "翻译"},
+        {"cmd": "speak", "params": {"text": "翻译完成"}, "desc": "朗读结果"},
+    ],
+    "📸 会议记录": [
+        {"cmd": "screenshot", "desc": "截屏"},
+        {"cmd": "screenshot", "desc": "截屏"},
+        {"cmd": "screenshot", "desc": "截屏", "wait": 60},
+    ],
+    "🏠 远程办公": [
+        {"cmd": "vpn_status", "desc": "连接VPN"},
+        {"cmd": "my_ip", "desc": "确认IP"},
+        {"cmd": "speedtest", "desc": "网络测速"},
+        {"cmd": "wifi_status", "desc": "WiFi信号"},
+        {"cmd": "notification", "params": {"text": "远程办公已就绪"}, "desc": "通知"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 三、开发运维 (6)
+    # ═══════════════════════════════════════════════
+    "🐳 Docker 监控": [
+        {"cmd": "docker", "params": {"action": "ps"}, "desc": "运行容器"},
+        {"cmd": "docker", "params": {"action": "images"}, "desc": "镜像列表"},
+        {"cmd": "disk_monitor", "desc": "磁盘空间"},
+    ],
+    "🔧 Homebrew 维护": [
+        {"cmd": "brew", "params": {"action": "update"}, "desc": "更新源"},
+        {"cmd": "brew", "params": {"action": "upgrade"}, "desc": "升级包"},
+        {"cmd": "brew", "params": {"action": "cleanup"}, "desc": "清理"},
+    ],
+    "📊 系统监控(循环)": [
+        {"cmd": "system_status", "desc": "系统状态", "loop": 12, "wait": 300, "retry": 1},
+        {"cmd": "notification", "params": {"text": "12轮监控完成"}, "desc": "监控完成"},
+    ],
+    "🌐 网络诊断": [
+        {"cmd": "my_ip", "desc": "公网IP"},
+        {"cmd": "wifi_status", "desc": "WiFi状态"},
+        {"cmd": "speedtest", "desc": "网速测试"},
+        {"cmd": "ping", "params": {"host": "114.114.114.114"}, "desc": "延迟测试"},
+    ],
+    "🔄 端口扫描": [
+        {"cmd": "port_check", "params": {"host": "localhost", "port": "22"}, "desc": "SSH端口"},
+        {"cmd": "port_check", "params": {"host": "localhost", "port": "80"}, "desc": "HTTP端口"},
+        {"cmd": "port_check", "params": {"host": "localhost", "port": "443"}, "desc": "HTTPS端口"},
+    ],
+    "📦 代码审查": [
+        {"cmd": "file_search", "params": {"pattern": "*.py"}, "desc": "查找Python文件"},
+        {"cmd": "notification", "params": {"text": "代码审查完成"}, "desc": "通知"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 四、网络通信 (5)
+    # ═══════════════════════════════════════════════
+    "🗺️ IP 信息": [
+        {"cmd": "my_ip", "desc": "公网IP"},
+        {"cmd": "whois", "desc": "IP归属地"},
+        {"cmd": "speedtest", "desc": "网速测试"},
+    ],
+    "🔗 HTTP 接口测试": [
+        {"cmd": "http_request", "params": {"url": "https://httpbin.org/get"}, "desc": "GET请求"},
+        {"cmd": "http_request", "params": {"url": "https://httpbin.org/post", "method": "POST"}, "desc": "POST请求"},
+    ],
+    "📥 批量下载": [
+        {"cmd": "download", "desc": "下载文件1"},
+        {"cmd": "download", "desc": "下载文件2"},
+        {"cmd": "download", "desc": "下载文件3"},
+    ],
+    "📰 今日新闻": [
+        {"cmd": "news", "desc": "综合新闻"},
+        {"cmd": "speak", "params": {"text": "新闻已加载"}, "desc": "朗读提示"},
+    ],
+    "💹 股市行情": [
+        {"cmd": "news", "params": {"keyword": "A股"}, "desc": "A股行情"},
+        {"cmd": "news", "params": {"keyword": "美股"}, "desc": "美股行情"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 五、娱乐生活 (6)
+    # ═══════════════════════════════════════════════
+    "🎵 音乐时光": [
         {"cmd": "music_search_online", "params": {"keyword": "经典"}, "desc": "播放经典"},
         {"cmd": "notification", "params": {"text": "音乐已开始播放"}, "desc": "通知"},
     ],
-    "摸鱼预警": [
+    "🎤 歌手精选": [
+        {"cmd": "music_search_online", "params": {"keyword": "周杰伦"}, "desc": "周杰伦"},
+        {"cmd": "music_search_online", "params": {"keyword": "王力宏"}, "desc": "王力宏"},
+        {"cmd": "music_search_online", "params": {"keyword": "林俊杰"}, "desc": "林俊杰"},
+    ],
+    "🐟 摸鱼预警": [
         {"cmd": "screenshot", "desc": "截屏"},
         {"cmd": "notification", "params": {"text": "注意! 老板来了!"}, "desc": "警告"},
     ],
-    "王力宏": [
-        {"cmd": "music_search_online", "params": {"keyword": "王力宏"}, "desc": "搜索并播放王力宏"},
-        {"cmd": "notification", "params": {"text": "正在播放王力宏的歌曲"}, "desc": "通知"},
+    "🎮 游戏提醒": [
+        {"cmd": "timer", "params": {"minutes": 30}, "desc": "游戏30分钟"},
+        {"cmd": "notification", "params": {"text": "⏰ 游戏时间到! 休息一下"}, "desc": "休息提醒"},
     ],
+    "🌙 睡前准备": [
+        {"cmd": "system_volume", "params": {"level": 10}, "desc": "调低音量"},
+        {"cmd": "music_stop", "desc": "停止音乐"},
+        {"cmd": "notification", "params": {"text": "🌙 晚安! 好梦"}, "desc": "晚安提醒"},
+    ],
+    "🤖 AI 对话": [
+        {"cmd": "chat", "params": {"message": "你好"}, "desc": "AI对话"},
+        {"cmd": "screenshot_analyze", "desc": "分析截图"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 六、安全防护 (4)
+    # ═══════════════════════════════════════════════
+    "🔐 VPN 接入": [
+        {"cmd": "vpn_status", "desc": "VPN状态"},
+        {"cmd": "my_ip", "desc": "确认IP"},
+        {"cmd": "notification", "params": {"text": "VPN已连接"}, "desc": "通知"},
+    ],
+    "🛡️ 隐私检查": [
+        {"cmd": "my_ip", "desc": "公网IP"},
+        {"cmd": "wifi_status", "desc": "网络状态"},
+        {"cmd": "process", "params": {"action": "list"}, "desc": "运行进程"},
+    ],
+    "🔑 凭据管理": [
+        {"cmd": "credential", "desc": "查看凭据"},
+        {"cmd": "notification", "params": {"text": "凭据检查完成"}, "desc": "通知"},
+    ],
+    "🚪 快速锁屏": [
+        {"cmd": "lock_screen", "desc": "锁定屏幕"},
+    ],
+    # ═══════════════════════════════════════════════
+    # 七、自定义模板存储区
+    # ═══════════════════════════════════════════════
+    # 用户可通过 save_template 命令保存自定义工作流到此区域
+    # 格式: "📌 我的模板名": [steps...]
 }
 
 
@@ -330,9 +520,13 @@ class PersonalAgentREPL(cmd.Cmd):
         super().__init__()
         self.config = config
         self._last_output = ""
+        self._last_workflow_steps = None
         self._interactive = interactive
         self._conv_history = []
         self.plugins = []
+
+        # 加载用户自定义模板
+        self._load_templates()
 
         # Load plugins
         self._load_plugins()
@@ -453,6 +647,9 @@ class PersonalAgentREPL(cmd.Cmd):
                 handler = _t.COMMANDS.get("voice_input")
                 if handler:
                     print(handler({}))
+                return
+            if cmd_name == "create_wf":
+                self.do_create_wf("")
                 return
 
             handler = COMMANDS.get(cmd_name)
@@ -836,6 +1033,7 @@ class PersonalAgentREPL(cmd.Cmd):
 
     def _run_workflow(self, steps):
         print(f"\n{Color.bold('▶️ 执行工作流')}")
+        self._last_workflow_steps = steps  # 保存供 save_template 使用
         total = len(steps)
         results = []
         for i, step in enumerate(steps, 1):
@@ -862,6 +1060,245 @@ class PersonalAgentREPL(cmd.Cmd):
 
         success = sum(1 for r in results if not isinstance(r, str) or not r.startswith("❌"))
         print(f"\n{Color.bold(f'📊 工作流完成: {success}/{total} 步成功')}")
+
+    # ── 引导式创建工作流 ────────────────────────────
+
+    def do_create_wf(self, arg):
+        """引导式创建工作流（分步问答）"""
+        import re as _re
+
+        print(f"\n{Color.bold('🧩 引导式工作流创建')}")
+        print(f"{Color.dim('按提示一步步配置，最后保存并运行')}\n")
+
+        # ── 1. 命名 ──
+        try:
+            name = input(f"{Color.info('📌 工作流名称: ')}").strip()
+            if not name:
+                print(f"{Color.err('❌ 已取消')}")
+                return
+        except (EOFError, KeyboardInterrupt):
+            print(f"\n{Color.err('❌ 已取消')}")
+            return
+
+        steps = []
+
+        # ── 2. 触发方式 ──
+        print(f"\n{Color.bold('⏰ 触发方式:')}")
+        print(f"  {Color.dim('1. 手动执行（默认）')}")
+        print(f"  {Color.dim('2. 定时执行（每天固定时间）')}")
+        print(f"  {Color.dim('3. 间隔执行（每隔 N 秒）')}")
+        try:
+            trigger_choice = input(f"{Color.info('请选择 (1-3, 回车=手动): ')}").strip()
+        except (EOFError, KeyboardInterrupt):
+            trigger_choice = ""
+
+        if trigger_choice == "2":
+            try:
+                h = input(f"{Color.info('  每天几点? (0-23): ')}").strip()
+                if h.isdigit() and 0 <= int(h) <= 23:
+                    steps.append({
+                        "type": "trigger", "cmd": "trigger_schedule",
+                        "params": {"cron": f"0 {int(h)} * * *"},
+                        "desc": f"⏰ 每天{h}点触发"
+                    })
+            except (EOFError, KeyboardInterrupt):
+                pass
+        elif trigger_choice == "3":
+            try:
+                secs = input(f"{Color.info('  间隔多少秒? (如 300=5分钟): ')}").strip()
+                if secs.isdigit() and int(secs) > 0:
+                    steps.append({
+                        "type": "trigger", "cmd": "trigger_interval",
+                        "params": {"seconds": int(secs)},
+                        "desc": f"🔄 每{secs}秒执行"
+                    })
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+        # ── 3. 添加步骤 ──
+        print(f"\n{Color.bold('📋 添加步骤:')}")
+        print(f"  {Color.dim('输入命令名或选择常用命令，空行结束')}\n")
+
+        # 常用命令快捷选择
+        QUICK_CMDS = [
+            ("1", "系统状态", "system_status"),
+            ("2", "电池状态", "battery_status"),
+            ("3", "今日日程", "calendar"),
+            ("4", "待办列表", "todo_list"),
+            ("5", "截屏", "screenshot"),
+            ("6", "通知", "notification"),
+            ("7", "播放音乐", "music_search_online"),
+            ("8", "检查网络", "wifi_status"),
+            ("9", "磁盘监控", "disk_monitor"),
+            ("0", "番茄钟", "timer"),
+        ]
+
+        while True:
+            try:
+                # 显示快捷选择
+                print(f"  {Color.dim('快捷选择:')}", " ".join(f"{k}={v}" for k, v, _ in QUICK_CMDS))
+                line = input(f"  {Color.info(f'步骤 {len(steps)+1}')} (回车结束): ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+
+            if not line:
+                break
+
+            cmd_name = None
+            params = {}
+            desc = ""
+
+            # 快捷数字
+            for k, v, c in QUICK_CMDS:
+                if line == k:
+                    cmd_name = c
+                    desc = v
+                    break
+
+            if not cmd_name:
+                # 直接输入命令名
+                cmd_name = line.split()[0]
+                # 检查是否有参数
+                rest = line[len(cmd_name):].strip()
+                if rest:
+                    for part in rest.split():
+                        if "=" in part:
+                            k, v = part.split("=", 1)
+                            params[k] = v
+                desc = cmd_name
+
+            if cmd_name not in COMMANDS:
+                print(f"  {Color.err(f'❌ 未知命令: {cmd_name}')}")
+                # 显示建议
+                suggestions = [c for c in COMMANDS if cmd_name in c]
+                if suggestions:
+                    sug_str = ", ".join(suggestions[:5])
+                    print(f"  {Color.dim(f'  建议: {sug_str}')}")
+                continue
+
+            # 通知命令特殊处理：问文本
+            if cmd_name == "notification":
+                try:
+                    text = input(f"    {Color.info('通知内容: ')}").strip()
+                    if text:
+                        params["text"] = text
+                        desc = f"通知: {text}"
+                except (EOFError, KeyboardInterrupt):
+                    pass
+
+            # 音乐搜索特殊处理：问关键词
+            if cmd_name == "music_search_online":
+                try:
+                    kw = input(f"    {Color.info('搜索关键词: ')}").strip()
+                    if kw:
+                        params["keyword"] = kw
+                        desc = f"播放: {kw}"
+                except (EOFError, KeyboardInterrupt):
+                    pass
+
+            # 音量特殊处理
+            if cmd_name == "system_volume":
+                try:
+                    lv = input(f"    {Color.info('音量 (0-100): ')}").strip()
+                    if lv.isdigit():
+                        params["level"] = int(lv)
+                        desc = f"音量 {lv}"
+                except (EOFError, KeyboardInterrupt):
+                    pass
+
+            steps.append({"cmd": cmd_name, "params": params, "desc": desc})
+            print(f"  {Color.ok('✅ 已添加')}")
+
+        if len(steps) == 0:
+            print(f"\n{Color.err('❌ 至少需要一个步骤')}")
+            return
+
+        # ── 4. 预览 ──
+        print(f"\n{Color.bold('📋 工作流预览:')}")
+        print(f"  名称: {Color.info(name)}")
+        total = len(steps)
+        for i, s in enumerate(steps, 1):
+            desc = s.get("desc", s["cmd"])
+            if s.get("type") == "trigger":
+                print(f"  {i}. ⏰ {desc}")
+            else:
+                p = s.get("params", {})
+                extra = " ".join(f"{k}={v}" for k, v in p.items()) if p else ""
+                extra_str = f" ({extra})" if extra else ""
+                print(f"  {i}. {desc}{extra_str}")
+        print(f"  {Color.dim(f'共 {total} 步')}")
+
+        # ── 5. 保存/运行 ──
+        try:
+            action = input(f"\n{Color.info('[1] 保存  [2] 运行  [3] 保存并运行  [回车] 取消: ')}").strip()
+        except (EOFError, KeyboardInterrupt):
+            action = ""
+
+        if action in ("1", "3"):
+            WORKFLOW_PRESETS[name] = steps
+            print(f"  {Color.ok('✅')} 已保存到预设「{name}」")
+
+        if action in ("2", "3"):
+            print()
+            self._run_workflow(steps)
+
+        if not action:
+            print(f"  {Color.dim('已取消')}")
+
+    def do_save_template(self, arg):
+        """将当前工作流保存为模板。用法: save_template 名称=我的模板"""
+        name = arg.strip() if arg else ""
+        if not name:
+            print(f"  {Color.err('需要模板名称')}")
+            print(f"  {Color.dim('用法: save_template 名称=每日巡检')}")
+            return
+        if name in WORKFLOW_PRESETS:
+            print(f"  {Color.err(f'模板「{name}」已存在，将覆盖')}")
+            try:
+                yes = input(f"  {Color.info('确认覆盖? (y/n): ')}").strip().lower()
+                if yes != "y":
+                    print(f"  {Color.dim('已取消')}")
+                    return
+            except (EOFError, KeyboardInterrupt):
+                return
+        # 获取最后运行的工作流步骤
+        steps = getattr(self, "_last_workflow_steps", None)
+        if not steps:
+            print(f"  {Color.err('没有最近执行的工作流')}")
+            print(f"  {Color.dim('先运行一个工作流，然后执行 save_template 保存')}")
+            return
+        WORKFLOW_PRESETS[name] = steps
+        # 持久化保存到用户配置目录
+        self._save_templates()
+        print(f"  {Color.ok('✅')} 模板「{name}」已保存 ({len(steps)} 步)")
+
+    def _save_templates(self):
+        """将自定义模板保存到 ~/.zhixing/custom_templates.json"""
+        import json as _json
+        custom = {k: v for k, v in WORKFLOW_PRESETS.items()
+                  if k not in _BUILTIN_TEMPLATES}
+        try:
+            path = os.path.expanduser("~/.zhixing/custom_templates.json")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                _json.dump(custom, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def _load_templates(self):
+        """启动时加载自定义模板"""
+        import json as _json
+        path = os.path.expanduser("~/.zhixing/custom_templates.json")
+        if os.path.exists(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    custom = _json.load(f)
+                WORKFLOW_PRESETS.update(custom)
+            except Exception:
+                pass
+
+# 内置模板名称列表（用于区分自定义模板）
+_BUILTIN_TEMPLATES = frozenset(WORKFLOW_PRESETS.keys())
 
 
 # ── 单条命令模式 ──────────────────────────────────────────

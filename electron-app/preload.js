@@ -16,7 +16,6 @@ contextBridge.exposeInMainWorld("ka", {
   toggle: () => ipcRenderer.invoke("toggle-window"),
   hide: () => ipcRenderer.invoke("hide-window"),
   hideNoFloat: () => ipcRenderer.invoke("hide-window-nofloat"),
-  maximize: () => ipcRenderer.invoke("maximize-window"),
   moveBy: (dx, dy) => ipcRenderer.invoke("move-window", dx, dy),
 
   // 系统
@@ -29,8 +28,7 @@ contextBridge.exposeInMainWorld("ka", {
   onLog: (cb) => ipcRenderer.on("log", (_, msg) => cb(msg)),
   onLauncherResult: (cb) => ipcRenderer.on("launcher-result", (_, msg) => cb(msg)),
 
-  // ── 命令执行 ──
-  runCommand: (cmd) => ipcRenderer.invoke("run-command", cmd),
+  // ── 命令执行 ─── 渲染进程通过 WebSocket 直连 server.py，不走 IPC ──
 
   // ── 云同步 ──
   syncPush: () => ipcRenderer.invoke("sync-push"),

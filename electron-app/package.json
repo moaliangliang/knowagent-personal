@@ -1,7 +1,8 @@
 {
   "name": "zhixing",
-  "version": "0.1.0",
-  "description": "知行 (ZhiXing) / Flow - AI 桌面助手",
+  "version": "1.0.0",
+  "description": "知行 (ZhiXing) — AI-powered macOS desktop automation assistant",
+  "author": "ZhiXing Team <team@zhixing.ai>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,28 +10,106 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
+    "dist:mas": "electron-builder --config.afterSign=scripts/notarize.mas.js --mac=mas",
+    "dist:mas-dev": "electron-builder --config.afterSign=scripts/notarize.mas.js --mac=mas-dev",
     "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "notarize": "node scripts/notarize.js",
+    "build:all": "npm run dist:mac && npm run dist:mas"
   },
   "build": {
     "appId": "com.zhixing.desktop",
     "productName": "ZhiXing",
+    "copyright": "Copyright © 2026 ZhiXing Team",
     "directories": {
       "output": "release"
     },
     "files": [
       "main.js",
       "preload.js",
+      "sync.js",
       "renderer/**/*",
       "package.json"
     ],
+    "npmRebuild": false,
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
-      "icon": "build/icon.png"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.inherit.plist",
+      "minimumSystemVersion": "11.0",
+      "notarize": false,
+      "identity": "Apple Distribution: liangliang mao (Y3K9Z836YN)"
+    },
+    "mas": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "mas-dev",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "mas",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "entitlements": "entitlements.mas.plist",
+      "entitlementsInherit": "entitlements.mas.inherit.plist",
+      "minimumSystemVersion": "11.0",
+      "hardenedRuntime": false,
+      "identity": "Apple Distribution: liangliang mao (Y3K9Z836YN)"
+    },
+    "dmg": {
+      "title": "ZhiXing ${version}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 440
+      }
+    },
+    "pkg": {
+      "scripts": "scripts/pkg"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "win": {
       "target": [
@@ -39,14 +118,24 @@
       ],
       "icon": "build/icon.ico"
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "zhixing-ai",
+      "repo": "zhixing"
     }
   },
   "devDependencies": {
     "electron": "^42.5.0",
-    "electron-builder": "^25.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-notarize": "^1.2.2",
     "electron-updater": "^6.0.0"
   }
 }

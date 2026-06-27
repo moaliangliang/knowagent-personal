@@ -1,10 +1,68 @@
 /**
  * 知行 ZhiXing Desktop — 渲染进程
- * 通过 Electron IPC 直接执行命令，无需额外后端
+ * 通过 WebSocket 连接 server.py (方案A：与 Chrome 扩展共享同一后端)
  */
 
 
 
+
+// ── WebSocket 直连 server.py ────────────────────
+
+let ws = null;
+let pending = {};
+let wsReqId = 0;
+let wsConnected = false;
+
+function wsSend(payload) {
+  return new Promise((resolve, reject) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      reject("未连接服务器");
+      return;
+    }
+    const id = ++wsReqId;
+    pending[id] = {
+      resolve,
+      reject,
+      timer: setTimeout(() => { delete pending[id]; reject("请求超时"); }, 15000),
+    };
+    try {
+      ws.send(JSON.stringify({ ...payload, requestId: id }));
+    } catch (e) {
+      clearTimeout(pending[id].timer);
+      delete pending[id];
+      reject("发送失败: " + e.message);
+    }
+  });
+}
+
+function connectWS() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  ws = new WebSocket("ws://localhost:9510");
+  ws.onopen = () => {
+    wsConnected = true;
+    setStatus(true);
+    console.log("🟢 WS 已连接");
+  };
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const rid = data.requestId;
+      if (rid && pending[rid]) {
+        clearTimeout(pending[rid].timer);
+        pending[rid].resolve(data);
+        delete pending[rid];
+      }
+    } catch (e) {}
+  };
+  ws.onclose = () => {
+    wsConnected = false;
+    ws = null;
+    setStatus(false);
+    setTimeout(connectWS, 3000);
+  };
+  ws.onerror = () => { if (ws) ws.close(); };
+}
+connectWS();
 
 // ── i18n ──────────────────────────────────────
 
@@ -29,8 +87,8 @@ if (_lang === "zh") {
   });
   // 更新输入框 placeholder
   document.getElementById("input-box").placeholder = "输入命令...\nShift+Enter 换行";
-  document.getElementById("btn-hide").title = "隐藏";
-  document.getElementById("btn-close").title = "关闭";
+  document.getElementById("btn-hide").title = _t("隐藏", "Minimize");
+  document.getElementById("btn-close").title = _t("关闭", "Close");
 }
 
 // ── 同步/更新界面 ────────────────────────────
@@ -122,31 +180,9 @@ const sendBtn = $("send-btn");
 // ── 标题栏 ────────────────────────────────────
 
 $("btn-hide").onclick = () => window.ka.hide();
-$("btn-maximize").onclick = () => window.ka.maximize();
 $("btn-close").onclick = () => window.ka.hide();
 
-// 窗口拖动（通过 IPC 让主进程处理）
-let isDragging = false, dragX = 0, dragY = 0;
-$("titlebar").addEventListener("mousedown", (e) => {
-  isDragging = true;
-  dragX = e.screenX;
-  dragY = e.screenY;
-  document.body.style.cursor = "grabbing";
-});
-document.addEventListener("mousemove", (e) => {
-  if (!isDragging) return;
-  const dx = e.screenX - dragX;
-  const dy = e.screenY - dragY;
-  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-    window.ka.moveBy(dx, dy);
-    dragX = e.screenX;
-    dragY = e.screenY;
-  }
-});
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-  document.body.style.cursor = "";
-});
+// 窗口拖动 — 使用 -webkit-app-region: drag（CSS 原生处理）
 
 // Escape 键隐藏窗口
 document.addEventListener("keydown", (e) => {
@@ -199,10 +235,10 @@ function stripAnsi(str) {
 
 async function runCommand(cmd) {
   try {
-    const result = await window.ka.runCommand(cmd);
-    return result;
+    const result = await wsSend({ action: "command", params: { cmd } });
+    return { success: true, data: result.data || "(空)" };
   } catch (e) {
-    return { success: false, data: `❌ 执行失败: ${e.message}` };
+    return { success: false, data: "❌ 连接服务器失败: " + e };
   }
 }
 
@@ -242,10 +278,10 @@ function addMsg(text, type) {
     wrap.appendChild(opts);
   } else {
     // 帮助输出：模块标题（以 🔧💬🌐 等 emoji 开头）自动加粗
-    if (type === "bot" && /[🔧💬🌐📁💻🎬📅🤖📊🎵⌨️🔐📋⚡🔌🛡️]/.test(text)) {
+    if (type === "bot" && /[🔧💬🌐📁💻🎬📅⬡📊🎵⌨️🔐📋⚡🔌🛡️]/.test(text)) {
       d.innerHTML = text.split("\n").map(line => {
         const esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-        if (/^\s*[🔧💬🌐📁💻🎬📅🤖📊🎵⌨️🔐📋⚡🔌🛡️]/.test(line)) {
+        if (/^\s*[🔧💬🌐📁💻🎬📅⬡📊🎵⌨️🔐📋⚡🔌🛡️]/.test(line)) {
           return `<b>${esc}</b>`;
         }
         return esc;
@@ -460,11 +496,7 @@ async function loadTodos() {
   }
 }
 
-// ── 就绪检测 ──────────────────────────────────
-
-function checkReady() {
-  setStatus(true); // IPC 直连，始终就绪
-}
+// ── 就绪检测 ── WS 的 onopen/onclose 自动更新状态，无需额外轮询 ──
 
 // ── Electron IPC ──────────────────────────────
 
@@ -482,10 +514,10 @@ window.ka.onLauncherResult((result) => {
 
 // ── 启动 ──────────────────────────────────────
 
-setStatus(true);
-checkReady();
-setInterval(checkConnection, 15000);
+setTimeout(() => {
+  if (!wsConnected) setStatus(false);
+}, 1000);
 addMsg(_t(
-  "🤖 知行已启动\n\n支持 98+ 命令，试试: 状态 / 看看 / 帮助",
-  "🤖 Flow ready\n\n98+ commands. Try: status / screenshot / help"
+  "⬡ 知行已启动\n\n试试: 状态 / 看看 / 帮助",
+  "⬡ Flow ready\n\nTry: status / screenshot / help"
 ), "bot");

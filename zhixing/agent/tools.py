@@ -822,10 +822,10 @@ def _play_from_netease(keyword: str, artist: str = "") -> str | None:
         dl = subprocess.run(
             ["yt-dlp", "-f", "bestaudio", "--extract-audio",
              "--audio-format", "mp3", "--output", tmp,
-             "--socket-timeout", "10", "--no-playlist",
+             "--socket-timeout", "15", "--no-playlist",
              "--max-filesize", "50M",
              f"https://music.163.com/song?id={song_id}"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True, text=True, timeout=30,
         )
         if dl.returncode != 0:
             return None
@@ -1532,42 +1532,392 @@ def cmd_contacts_search(params: dict) -> str:
 # ── 命令注册表 ───────────────────────────────────────────
 
 def cmd_workflow_execute(params: dict) -> str:
-    """执行多步工作流。steps=[{"cmd":"命令名","params":{…},"wait":1.0,"desc":"说明"},…]"""
-    steps = params.get("steps", [])
-    if not steps or not isinstance(steps, list):
-        return "❌ 需要 steps 参数，格式: [{\"cmd\":\"命令名\",\"params\":{…}}]"
+    """执行多步工作流。支持高级特性:
+    steps=[{"cmd":"命令名","params":…,"desc":"…","wait":1,"retry":2,"timeout":30,"loop":3},…]
 
+    高级步骤:
+      - loop=N: 重复执行 N 次
+      - retry=N: 失败后重试 N 次
+      - timeout=N: 单步超时秒数
+      - on_error=skip|stop: 失败时行为（默认 skip）
+      - if: 条件表达式（变量比较）
+      - bg=true: 后台执行
+      - sub_workflow=工作流名: 调用预设子工作流
+    """
+    steps = params.get("steps", [])
+    bg = str(params.get("bg", "")).lower() in ("true", "1", "yes")
+    if bg:
+        import threading as _t
+        _t.Thread(target=cmd_workflow_execute, args=({
+            "steps": steps, "bg": "false", "_silent": "true"
+        },), daemon=True).start()
+        return f"⏳ 工作流已提交后台执行（{len(steps)} 步）"
+
+    if not steps or not isinstance(steps, list):
+        return "❌ 需要 steps 参数"
+
+    # ── 变量上下文 ──
+    ctx: dict[str, str] = {}
     results = []
     total = len(steps)
-    for i, step in enumerate(steps, 1):
-        cmd = step.get("cmd", "")
-        step_params = step.get("params", {})
-        desc = step.get("desc", cmd)
-        wait = float(step.get("wait", 0.5))
+    all_success = True
+    _silent = str(params.get("_silent", "")).lower() in ("true", "1")
 
+    import concurrent.futures
+
+    def _interpolate(text: str) -> str:
+        import re as _re
+        def _replace(m: _re.Match) -> str:
+            key = m.group(1)
+            return ctx.get(key, m.group(0))
+        return _re.sub(r'\$\{(\w+)\}', _replace, str(text))
+
+    def _eval_step(step: dict, step_index: int, loop_ctx: str = "") -> tuple[bool, list[str]]:
+        nonlocal all_success
+        local_results = []
+        cmd = step.get("cmd", "")
+        step_params = dict(step.get("params", {}))
+        desc = step.get("desc", cmd)
+        wait = float(step.get("wait", 0))
+        retry = int(step.get("retry", 0))
+        timeout = int(step.get("timeout", 0))
+        on_error = step.get("on_error", "skip")
+        condition = step.get("if", "")
+        loop = int(step.get("loop", 1))
+        sub_wf = step.get("sub_workflow", "")
+
+        tag = f"[{step_index}/{total}]" + (f"({loop_ctx})" if loop_ctx else "")
+
+        # 条件判断
+        if condition:
+            for key, val in ctx.items():
+                condition = condition.replace(f"${{{key}}}", val)
+            try:
+                if not eval(condition, {"__builtins__": {}}, ctx):
+                    local_results.append(f"  {tag} ⏭️ {desc}（条件不满足）")
+                    return True, local_results
+            except Exception:
+                pass
+
+        # 子工作流
+        if sub_wf:
+            from zhixing.ui.cli import WORKFLOW_PRESETS
+            sub_steps = WORKFLOW_PRESETS.get(sub_wf)
+            if sub_steps:
+                for s in sub_steps:
+                    ok, sub_res = _eval_step(s, step_index, loop_ctx)
+                    local_results.extend(sub_res)
+                    if not ok and on_error == "stop":
+                        return False, local_results
+                return True, local_results
+            else:
+                local_results.append(f"  {tag} ❌ 子工作流「{sub_wf}」不存在")
+                if on_error == "stop":
+                    return False, local_results
+                return True, local_results
+
+        # 循环
+        for _ in range(loop):
+            loop_tag = tag + (f" 第{_+1}次" if loop > 1 else "")
+            _run_single(cmd, step_params, desc, wait, retry, timeout, on_error, loop_tag, local_results)
+
+        return True, local_results
+
+    def _run_single(cmd, step_params, desc, wait, retry, timeout, on_error, tag, local_results):
+        nonlocal all_success
         handler = COMMANDS.get(cmd)
         if not handler:
-            results.append(f"  [{i}/{total}] ❌ 未知命令: {cmd}（跳过）")
-            continue
+            local_results.append(f"  {tag} ❌ 未知命令: {cmd}（跳过）")
+            if on_error == "stop":
+                all_success = False
+            return
 
+        # 参数变量插值
+        for k, v in step_params.items():
+            if isinstance(v, str):
+                step_params[k] = _interpolate(v)
+
+        for attempt in range(retry + 1):
+            try:
+                if timeout > 0:
+                    import concurrent.futures as _cf
+                    with _cf.ThreadPoolExecutor() as ex:
+                        fut = ex.submit(handler, step_params)
+                        result = fut.result(timeout=timeout)
+                else:
+                    result = handler(step_params)
+
+                local_results.append(f"  {tag} ✅ {desc}")
+                if isinstance(result, str):
+                    short = result[:200] + "..." if len(result) > 200 else result
+                    local_results.append(f"     {short}")
+
+                # 保存输出到变量上下文
+                if isinstance(result, str):
+                    ctx[f"result_{cmd}"] = result[:500]
+                return
+
+            except concurrent.futures.TimeoutError:
+                local_results.append(f"  {tag} ⏱ {desc} 超时({timeout}s)")
+                if attempt < retry:
+                    local_results.append(f"    重试 {attempt+1}/{retry}...")
+            except Exception as e:
+                local_results.append(f"  {tag} ❌ {desc} 失败: {e}")
+                if attempt < retry:
+                    local_results.append(f"    重试 {attempt+1}/{retry}...")
+
+        if on_error == "stop":
+            all_success = False
+
+    # ── 主执行循环 ──
+    for i, step in enumerate(steps, 1):
         try:
-            result = handler(step_params)
-            results.append(f"  [{i}/{total}] ✅ {desc}")
-            if isinstance(result, str) and len(result) > 200:
-                results.append(f"     {result[:200]}...")
-            elif isinstance(result, str):
-                results.append(f"     {result}")
+            ok, step_results = _eval_step(step, i)
+            results.extend(step_results)
+            if not ok:
+                break
         except Exception as e:
-            results.append(f"  [{i}/{total}] ❌ {desc} 失败: {e}")
-
-        if wait > 0:
-            import time as _t
-            _t.sleep(wait)
+            results.append(f"  [{i}/{total}] ❌ 步骤异常: {e}")
+            all_success = False
+            break
 
     success = sum(1 for r in results if "✅" in r)
+    if _silent:
+        return "\n".join(results)
+
     return (
         f"📋 工作流完成（{success}/{total} 步成功）:\n" + "\n".join(results)
     )
+
+
+# ── 自然语言创建工作流 ──────────────────────────────────
+
+def cmd_workflow_create(params: dict) -> str:
+    """🧠 用自然语言描述创建工作流。
+    例如: "每天9点检查系统然后发通知" / "每隔30分钟截图一次"
+    参数:
+        text (str): 自然语言描述
+    """
+    import re as _re
+    text = params.get("text", "") or params.get("keyword", "")
+    if not text:
+        return "❌ 需要 text 参数，例如: text=每天9点检查系统然后发通知"
+
+    steps = []
+    _desc = text
+
+    # ── 1. 解析触发条件 ──
+    trigger = None
+    # 定时: 每天X点 / 每X小时
+    m = _re.search(r'每天\s*(\d+)\s*点', text)
+    if m:
+        h = int(m.group(1))
+        trigger = {"type": "trigger_schedule", "config": {"cron": f"0 {h} * * *"}, "desc": f"每天{h}点触发"}
+        text = text.replace(m.group(0), "")
+
+    # 间隔: 每X分钟 / 每X小时 / 每X秒（也匹配"每隔X分钟"）
+    if not trigger:
+        m = _re.search(r'(?:每|每隔)\s*(\d+)\s*(分钟|小时|秒)', text)
+        if m:
+            n = int(m.group(1))
+            unit = m.group(2)
+            seconds = n * 60 if unit == "分钟" else n * 3600 if unit == "小时" else n
+            trigger = {"type": "trigger_interval", "config": {"seconds": seconds}, "desc": f"每{n}{unit}执行"}
+            text = text.replace(m.group(0), "")
+
+    # ── 2. 解析步骤序列（按"然后""接着""之后""再"分割） ──
+    raw_steps = [s.strip() for s in _re.split(r'(?:然后|接着|之后|再|并且|同时|、|，)', text) if s.strip()]
+
+    # ── 3. 解析每个步骤 ──
+    KNOWN_ACTIONS = {
+        "检查系统":         ("system_status", {}),
+        "系统状态":         ("system_status", {}),
+        "检查电池":         ("battery_status", {}),
+        "电池状态":         ("battery_status", {}),
+        "电池健康":         ("battery_health", {}),
+        "检查网络":         ("wifi_status", {}),
+        "网络状态":         ("wifi_status", {}),
+        "网速测试":         ("speedtest", {}),
+        "公网IP":          ("my_ip", {}),
+        "今日日程":         ("calendar", {}),
+        "日程":            ("calendar", {}),
+        "待办列表":         ("todo_list", {}),
+        "待办":            ("todo_list", {}),
+        "磁盘空间":         ("disk_monitor", {}),
+        "磁盘":            ("disk_monitor", {}),
+        "CPU温度":         ("sensor_temp", {}),
+        "温度":            ("sensor_temp", {}),
+        "截屏":            ("screenshot", {}),
+        "截图":            ("screenshot", {}),
+        "打开网页":         ("open_url", {}),
+        "音量":            ("system_volume", {}),
+        "锁屏":            ("lock_screen", {}),
+        "通知":            ("notification", {}),
+        "剪贴板历史":       ("clipboard_history", {}),
+        "朗读":            ("speak", {}),
+        "Docker":         ("docker", {}),
+        "进程":            ("process", {}),
+        "Homebrew":       ("brew", {}),
+        "番茄钟":          ("timer", {}),
+        "VPN状态":         ("vpn_status", {}),
+        "停止音乐":         ("music_stop", {}),
+        "搜索文件":         ("file_search", {}),
+    }
+
+    _ACTION_PATTERNS = [
+        # 播放音乐: 播放XXX的歌/音乐
+        (r'播放\s*(.+?)(?:的歌|的歌曲|的音乐|$)',
+         lambda kw: ("music_search_online", {"keyword": kw})),
+        # 通知: 通知XXX / 发通知XXX
+        (r'(?:通知|发通知|提醒我)\s*(.+)',
+         lambda kw: ("notification", {"text": kw})),
+        # 打开: 打开XXX
+        (r'打开\s*(.+)',
+         lambda kw: ("open_app", {"keyword": kw}) if not kw.startswith("http") else ("open_url", {"url": kw})),
+        # 搜索文件: 搜索文件XXX / 查找XXX文件
+        (r'(?:搜索|查找|找)\s*(.+?)(?:文件|内容)',
+         lambda kw: ("file_search", {"pattern": kw})),
+        # 声音: 音量XX
+        (r'(?:音量|声音)(?:调到|设为|为)?\s*(\d+)',
+         lambda kw: ("system_volume", {"level": int(kw)})),
+        # 等待X秒/分
+        (r'等待\s*(\d+)\s*(?:秒|分钟)',
+         lambda kw: None),  # 特殊处理为 wait 步骤
+        # 添加待办: 添加待办XXX
+        (r'(?:添加待办|记一下|记下)\s*(.+)',
+         lambda kw: ("todo_add", {"title": kw})),
+    ]
+
+    for rs in raw_steps:
+        rs = rs.strip()
+        if not rs:
+            continue
+
+        # 等待步骤特殊处理
+        wm = _re.search(r'等待\s*(\d+)\s*(?:秒|分钟)', rs)
+        if wm:
+            secs = int(wm.group(1))
+            if wm.group(2) == "分钟":
+                secs *= 60
+            steps.append({"cmd": "wait", "params": {"seconds": secs}, "desc": f"等待{wm.group(1)}{wm.group(2)}"})
+            continue
+
+        # 先检查精确匹配
+        matched = False
+        for keyword, (cmd, base_params) in KNOWN_ACTIONS.items():
+            if keyword in rs:
+                params = dict(base_params)
+                # 通知特殊处理
+                if cmd == "notification":
+                    extra = rs.replace(keyword, "", 1).strip()
+                    # 过滤掉"发"这种无意义的残留字
+                    if extra and len(extra) > 1 and extra not in ("发", "通知"):
+                        params["text"] = extra
+                steps.append({"cmd": cmd, "params": params, "desc": keyword})
+                matched = True
+                break
+
+        if matched:
+            continue
+
+        # 正则模式匹配
+        for pat, handler in _ACTION_PATTERNS:
+            m = _re.search(pat, rs)
+            if m:
+                kw = m.group(1).strip() if m.lastindex and m.group(1) else ""
+                result = handler(kw)
+                if result is not None:
+                    cmd, params = result
+                    desc = rs[:20] + "..." if len(rs) > 20 else rs
+                    steps.append({"cmd": cmd, "params": params, "desc": desc})
+                    matched = True
+                    break
+
+        if matched:
+            continue
+
+        # 未知步骤 — 尝试直接作为命令名
+        for cmd_name in COMMANDS:
+            if cmd_name in rs or cmd_name.replace("_", "") in rs:
+                steps.append({"cmd": cmd_name, "params": {}, "desc": cmd_name})
+                matched = True
+                break
+
+        if not matched:
+            # 最后尝试：用 text 作为 keyword 参数交给搜索类命令
+            if "搜索" in rs or "查" in rs:
+                kw = rs.replace("搜索", "").replace("查", "").replace("找", "").strip()
+                if kw:
+                    steps.append({"cmd": "music_search_online", "params": {"keyword": kw}, "desc": f"搜索{kw}"})
+
+    if not steps:
+        return "❌ 无法从描述中识别出工作流步骤。试试更明确的描述，如:\n  每天9点检查系统然后发通知"
+
+    # ── 4. 组装结果 ──
+    if trigger:
+        # 触发步骤放最前面
+        trigger_step = trigger
+        trigger_step["type"] = "trigger"
+        steps.insert(0, trigger_step)
+
+    # 生成 YAML 预览
+    yaml_lines = []
+    for s in steps:
+        if s.get("type") == "trigger":
+            if 'cron' in s['config']:
+                yaml_lines.append(f"  - type: schedule")
+                yaml_lines.append(f"    cron: \"{s['config']['cron']}\"")
+            if 'seconds' in s['config']:
+                yaml_lines.append(f"  - type: interval")
+                yaml_lines.append(f"    interval: {s['config']['seconds']}")
+        else:
+            yaml_lines.append(f"  - cmd: {s['cmd']}")
+            if s.get('params'):
+                for k, v in s['params'].items():
+                    if isinstance(v, str):
+                        yaml_lines.append(f"    {k}: \"{v}\"")
+                    else:
+                        yaml_lines.append(f"    {k}: {v}")
+            yaml_lines.append(f"    desc: \"{s.get('desc', s['cmd'])}\"")
+
+    yaml_str = "\n".join(yaml_lines)
+
+    # ── 5. 可选：保存到预设 ──
+    save = params.get("save", "false").lower() in ("true", "1", "yes")
+    preset_name = params.get("name", "")
+    if save and preset_name:
+        try:
+            from zhixing.ui.cli import WORKFLOW_PRESETS
+            WORKFLOW_PRESETS[preset_name] = steps
+        except Exception:
+            pass
+
+    # ── 6. 也可直接执行 ──
+    run = params.get("run", "false").lower() in ("true", "1", "yes")
+    result = ""
+    if run:
+        result = cmd_workflow_execute({"steps": steps})
+
+    lines = [
+        f"🧠 从描述: 「{_desc}」",
+        f"  解析出 {len(steps)} 步工作流:",
+    ]
+    for i, s in enumerate(steps, 1):
+        if s.get("type") == "trigger":
+            desc = s.get("desc", "")
+            lines.append(f"  {i}. ⏰ {desc}")
+        else:
+            desc = s.get("desc", s["cmd"])
+            lines.append(f"  {i}. {desc}")
+    lines.append(f"\n📋 YAML 格式:")
+    lines.append(yaml_str)
+    if result:
+        lines.append(f"\n▶️ 执行结果:\n{result}")
+    else:
+        lines.append(f"\n💡 运行: workflow_execute steps=上方的步骤列表")
+        lines.append(f"   保存: workflow_create text='...' save=true name=工作流名")
+
+    return "\n".join(lines)
 
 
 # ── 个人知识库 (RAG) ─────────────────────────────────────
@@ -2160,7 +2510,7 @@ TOOL_SCHEMAS: dict = {
 # Register todo commands
 from zhixing.agent.todo import (
     cmd_todo_add, cmd_todo_list, cmd_todo_done,
-    cmd_todo_undo, cmd_todo_delete, cmd_todo_reminders,
+    cmd_todo_undo, cmd_todo_delete, cmd_todo_reminders, cmd_todo_import,
 )
 
 COMMANDS.update({
@@ -2170,6 +2520,8 @@ COMMANDS.update({
     "todo_undo": cmd_todo_undo,
     "todo_delete": cmd_todo_delete,
     "todo_reminders": cmd_todo_reminders,
+    "todo_import": cmd_todo_import,
+    "workflow_create": cmd_workflow_create,
 })
 TOOL_SCHEMAS.update({
     "todo_add": {

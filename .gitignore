@@ -23,6 +23,7 @@ swift/timer_window
 .idea/
 .vscode/
 docs/screenshots/
-.github/
+# electron-builder
+electron-app/release/
 electron-app/node_modules/
 chrome-extension/node_modules/

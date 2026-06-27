@@ -107,6 +107,16 @@ function saveConfig(data) {
 // ── Python 后端管理 ──────────────────────────────
 
 function startPythonBackend() {
+  // 端口冲突检测：如果 9510 已被占用，不再重复启动
+  const { execSync } = require("child_process");
+  try {
+    const existing = execSync(`lsof -ti :9510 2>/dev/null`, { encoding: "utf-8", timeout: 5000 }).trim();
+    if (existing) {
+      console.log(`[Python] 端口 9510 已被占用(PID ${existing})，跳过启动`);
+      return;
+    }
+  } catch (e) { /* lsof 未找到进程，正常 */ }
+
   const pythonCmd = process.platform === "win32" ? "python" : "python3";
   try {
     pythonProcess = spawn(pythonCmd, [PYTHON_SERVER], {
@@ -138,12 +148,12 @@ function createWindow() {
   const cfg = loadConfig();
   const display = screen.getPrimaryDisplay().workArea;
 
-  // 验证保存的位置是否在当前屏幕内
+  // 验证保存的位置是否在当前屏幕内，默认靠右
   let wx = cfg.x;
   let wy = cfg.y;
   if (wx === undefined || wy === undefined || wx < 0 || wy < 0 || wx > display.width || wy > display.height) {
     wx = display.x + display.width - WIN_WIDTH - 20;
-    wy = display.y + 80;
+    wy = display.y + Math.floor((display.height - WIN_HEIGHT) / 3);
   }
 
   mainWindow = new BrowserWindow({
@@ -157,7 +167,7 @@ function createWindow() {
     resizable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    show: false,
+    show: true,     // 启动时直接显示（不再依赖 ready-to-show 事件）
     minWidth: 320,
     minHeight: 400,
     maxWidth: 520,
@@ -171,11 +181,13 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
 
+  // 在所有桌面空间可见（切换 Space 不丢失）
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
   // 默认显示 + 淡入效果
   mainWindow.once("ready-to-show", () => {
-    mainWindow.setOpacity(0);
     mainWindow.show();
-    mainWindow.setAlwaysOnTop(true);
+    mainWindow.setAlwaysOnTop(true, "floating");
     fadeTo(1, 200);
   });
 
@@ -197,6 +209,12 @@ function createWindow() {
   mainWindow.on("moved", () => {
     const [x, y] = mainWindow.getPosition();
     saveConfig({ x, y });
+  });
+
+  // 每次窗口获得焦点时重新确保置顶（修复 alwaysOnTop 有时丢失的问题）
+  mainWindow.on("focus", () => {
+    mainWindow.setAlwaysOnTop(true, "floating");
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   });
 
   // 初始化云同步
@@ -268,7 +286,7 @@ function createFloatBtn() {
       body:hover { background: rgba(0,180,255,0.3); transform: scale(1.1); }
       body:active { transform: scale(0.95); }
     </style></head>
-    <body><span style="color:rgba(255,255,255,0.9);font-weight:bold;">Z</span></body>
+    <body><img id="float-icon" style="width:32px;height:32px;border-radius:50%;" src="data:image/png;base64,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" /></body>
     <script>
       document.body.onclick = () => {
         window.electronAPI && window.electronAPI.toggleMainWindow();
@@ -370,9 +388,8 @@ function toggleWindow() {
 // ── 系统托盘 ─────────────────────────────────────
 
 function createTray() {
-  // 用 Base64 内嵌图标，确保不依赖文件路径
-  // 紫色圆形机器人脸图标 (22x22)
-  const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAnUlEQVR4nL3VQRJAMAwF0CTHsHAOd+C43ME5LFzj29SoKo1E/V2NeUlNG0SVwsU3RszZ5wN3Nni8AZUF2IWGoKeWmRt6ggGsZEyMi6fTODzRclp7tk85NHzzc8deNIq87RYlNFjydad7pAaqhvESVcEwoEUYRvSAh+t9N6NP5xiOTvdIWgkeNNr5Z0OIk+lmutKa/DzoSVGg8Guqlg1Da0c+L+gMvwAAAABJRU5ErkJggg==";
+  // 用 Base64 内嵌统一品牌图标（紫色渐变圆 + 白「知」）
+  const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAABwElEQVR4nM2Vv0scQRTHPyspxE475fA/OOwEUwQC11gIwQgWIkiIRo2emlMJCOkEQcUfCaiJxYEoCDEE0h4ICgoWgmgjKQJBIlic3WExbyNv9c7du931XBD8wjDLzLzPvnnz3gw8BfV8uih7rRUKmvhXC7wA4kAMqAJywBlwDOx8naw7Lxv87uNf7bqA10ACqPRZdgVkgC0gvTJVH76F/xHVO/6nOhDal/odGaxS+7wqPHGxRbcfSe8/nGbd9gVwf/KkFjEa02gSU6P2Dgd4duet0dNPDAwehdp/+dxQMqY2t1mgB62czYLHlkjcEqm0RAhqftDB/kP3GrWPF3scC/JycbnRdzzZe+CXr7ECOPl2D0Q0+Uu08K3JFzrUvR9UXQ7HCcXi6nMNfg4xuFsg9M2uZ11RyxWH4iz/PZ9+6e8LMNy1HX4P3JS7CyyitX81t5bwK1/u++lIZyZf5seePLZss2PZxpmNIss22jLK8YDnNprPLZGtyGCRrNorxwN2ZJs0UWWbJbd9yTmkWr/rLZXSOwmoKQOZBZaA2dkfbZeBYIDRV5vaPeg+nvnZ7pkMzZyxlvV7X5DpXx2+L8ij6RoWCTMaKGk+pgAAAABJRU5ErkJggg==";
 
   let trayImage;
 
@@ -447,21 +464,7 @@ function registerShortcuts() {
 
 // ── IPC 处理 ────────────────────────────────────
 
-// ── 命令执行 ────────────────────────────────────
-
-ipcMain.handle("run-command", async (event, cmd) => {
-  const { execSync } = require("child_process");
-  try {
-    const result = execSync(`zhi ${cmd}`, {
-      encoding: "utf-8",
-      timeout: 60000,
-      maxBuffer: 1024 * 1024,
-    });
-    return { success: true, data: result.trim() };
-  } catch (e) {
-    return { success: false, data: `❌ ${e.message || e}` };
-  }
-});
+// ── 命令执行 ─── 渲染进程通过 WebSocket 直连 server.py，不再走 IPC ──
 
 ipcMain.handle("launcher-hide", () => {
   if (launcherWindow) launcherWindow.hide();
@@ -564,27 +567,6 @@ ipcMain.handle("update-download", () => {
   }
 });
 
-// 窗口最大化（扩展到最大尺寸，非全屏）
-ipcMain.handle("maximize-window", () => {
-  if (!mainWindow) return;
-  if (mainWindow.isMaximized()) {
-    mainWindow.unmaximize();
-    // 恢复上次保存的位置
-    const cfg = loadConfig();
-    if (cfg.x && cfg.y) {
-      mainWindow.setBounds({ width: WIN_WIDTH, height: WIN_HEIGHT, x: cfg.x, y: cfg.y });
-    }
-  } else {
-    const display = screen.getPrimaryDisplay().workArea;
-    mainWindow.setBounds({
-      x: display.x + Math.floor((display.width - WIN_WIDTH) / 2),
-      y: display.y + 40,
-      width: WIN_WIDTH,
-      height: display.height - 80,
-    });
-  }
-});
-
 // 窗口拖动
 ipcMain.handle("move-window", (event, dx, dy) => {
   if (!mainWindow) return;
@@ -603,8 +585,9 @@ app.whenReady().then(() => {
   createTray();
   createWindow();
   registerShortcuts();
-  // 后端已集成到 IPC（execSync zhi），不再需要独立 server.py
-  // startPythonBackend();
+  // 启动 Python WebSocket 后端（端口检测防冲突）
+  // Chrome 扩展和 Electron 渲染进程共用同一后端
+  startPythonBackend();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

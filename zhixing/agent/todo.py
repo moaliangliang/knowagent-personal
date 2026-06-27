@@ -209,8 +209,15 @@ class TodoManager:
             rid = r.stdout.strip()
             if rid.startswith("x-apple-reminder"):
                 return f"✅ 提醒已创建|{rid}"
+            if "not allowed" in (r.stderr or "").lower() or "not permitted" in (r.stderr or "").lower():
+                return "⚠️ 需授权: 请在 系统设置 → 隐私与安全性 → 自动化 → 允许终端/Electron 控制提醒事项"
+            if r.returncode != 0:
+                return f"⚠️ 同步失败（请确认已开启提醒事项权限）"
             return "✅ 已同步到提醒事项"
         except Exception as e:
+            err = str(e)
+            if "not allowed" in err.lower() or "not permitted" in err.lower():
+                return "⚠️ 需授权: 系统设置 → 隐私 → 自动化 → 允许控制提醒事项"
             return f"⚠️ 同步失败: {e}"
 
     @staticmethod
@@ -396,6 +403,52 @@ def cmd_todo_reminders(params: dict) -> str:
     return TodoManager.list_reminders()
 
 
+def cmd_todo_import(params: dict) -> str:
+    """从 macOS 提醒事项导入到本地待办列表。"""
+    mgr = TodoManager.get()
+    script = '''
+    tell application "Reminders"
+        set output to ""
+        set remindersList to every reminder whose completed is false
+        repeat with r in remindersList
+            set rName to name of r
+            set rId to id of r
+            set output to output & rId & "|||" & rName & "\\n"
+        end repeat
+        return output
+    end tell'''
+    try:
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+        imported = 0
+        skipped = 0
+        for line in r.stdout.strip().split("\n"):
+            if not line or "|||" not in line:
+                continue
+            rid, name = line.split("|||", 1)
+            name = name.strip()
+            if not name:
+                continue
+            # 检查是否已导入
+            existing = [t for t in mgr._todos if t.notes == f"rid:{rid.split('/')[-1]}"]
+            if existing:
+                skipped += 1
+                continue
+            item = mgr.add(title=name, notes=f"rid:{rid.split('/')[-1]}")
+            imported += 1
+        parts = []
+        if imported:
+            parts.append(f"✅ 已导入 {imported} 条")
+        if skipped:
+            parts.append(f"⏭️ 跳过 {skipped} 条（已存在）")
+        if not imported and not skipped:
+            return "📭 macOS 提醒事项为空"
+        return " ".join(parts)
+    except Exception as e:
+        if "not allowed" in str(e).lower():
+            return "⚠️ 需授权: 系统设置 → 隐私 → 自动化 → 允许终端控制提醒事项"
+        return f"❌ 导入失败: {e}"
+
+
 # ── 命令注册 ──────────────────────────────────────────
 
 COMMANDS: dict = {
@@ -405,6 +458,7 @@ COMMANDS: dict = {
     "todo_undo": cmd_todo_undo,
     "todo_delete": cmd_todo_delete,
     "todo_reminders": cmd_todo_reminders,
+    "todo_import": cmd_todo_import,
 }
 
 TOOL_SCHEMAS: dict = {
