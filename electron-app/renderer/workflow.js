@@ -46,13 +46,8 @@ let _isPro = false;
 
 async function checkProStatus() {
   try {
-    const resp = await fetch("http://localhost:9511", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "command", params: { cmd: "pro_status" } }),
-    });
-    const data = await resp.json();
-    _isPro = data.data === "pro" || data.data === true;
+    const result = await window.ka.runCommand("pro_status");
+    _isPro = result.data && (result.data.includes("pro") || result.data.includes("激活"));
   } catch (e) {
     _isPro = false;
   }
@@ -102,16 +97,43 @@ const WORKFLOW_PRESETS = [
 ];
 
 function showPresetsDialog() {
-  let msg = _tw("选择预设工作流：\n\n", "Select preset workflow:\n\n");
+  // 移除旧弹窗
+  const old = document.getElementById("wf-modal-overlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "wf-modal-overlay";
+  overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;";
+
+  const modal = document.createElement("div");
+  modal.style.cssText = "background:#fff;border-radius:12px;padding:20px;max-width:400px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.2);font-size:13px;max-height:80%;overflow-y:auto;";
+
+  modal.innerHTML = `<div style="font-weight:600;font-size:15px;margin-bottom:12px;">${_tw("选择预设工作流", "Select Preset Workflow")}</div>`;
+
   WORKFLOW_PRESETS.forEach((p, i) => {
     const label = p.name[_lang_wf];
+    const icon = p.icon || "📋";
     const desc = p.steps.map(s => s.config.desc || s.config.cmd || s.type).join(" → ");
-    msg += `${i + 1}. ${label}  (${desc})\n`;
+    const btn = document.createElement("div");
+    btn.style.cssText = "padding:10px 12px;margin:4px 0;border-radius:8px;cursor:pointer;transition:background 0.15s;border:1px solid #eee;";
+    btn.innerHTML = `<div style="font-weight:500;">${icon} ${label}</div><div style="font-size:11px;color:#888;margin-top:4px;">${desc}</div>`;
+    btn.onmouseenter = () => btn.style.background = "#f5f6f8";
+    btn.onmouseleave = () => btn.style.background = "";
+    btn.onclick = () => {
+      overlay.remove();
+      loadPreset(i);
+    };
+    modal.appendChild(btn);
   });
-  const idx = parseInt(prompt(msg)) - 1;
-  if (idx >= 0 && idx < WORKFLOW_PRESETS.length) {
-    loadPreset(idx);
-  }
+
+  const cancel = document.createElement("div");
+  cancel.style.cssText = "padding:8px 12px;margin-top:8px;border-radius:8px;cursor:pointer;text-align:center;color:#999;font-size:12px;";
+  cancel.textContent = _tw("取消", "Cancel");
+  cancel.onclick = () => overlay.remove();
+  modal.appendChild(cancel);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 function loadPreset(idx) {
@@ -506,23 +528,40 @@ async function runWorkflow() {
   isRunning = true;
   renderSteps();
 
-  const yaml = toYaml();
+  // 通过 IPC 执行每个步骤
+  let results = [];
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    renderSteps();
+    // 构造命令
+    let cmd = "";
+    if (s.config.isCmd) {
+      cmd = s.config.cmd || "";
+      if (s.config.keyword) cmd += " keyword=" + s.config.keyword;
+      if (s.config.text) cmd += ' text="' + s.config.text + '"';
+    } else {
+      const type = s.type;
+      if (type === "navigate") cmd = "open_url url=" + (s.config.value || "");
+      else if (type === "click") cmd = "auto_click text=" + (s.config.target || "");
+      else if (type === "fill") cmd = "auto_type label=" + (s.config.target || "") + " value=" + (s.config.value || "");
+      else if (type === "type") cmd = "keyboard_type text=" + (s.config.value || "");
+      else if (type === "wait") cmd = "timer minutes=" + (parseInt(s.config.seconds) / 60 || 0.1);
+      else if (type === "screenshot") cmd = "screenshot";
+      else if (type === "assert") cmd = "auto_find text=" + (s.config.target || "");
+      else cmd = "system_status";
+    }
+    if (!cmd) continue;
 
-  // 通过 API 运行
-  try {
-    const resp = await fetch("http://localhost:9511", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "command",
-        params: { cmd: `auto_script\n${yaml}` },
-      }),
-    });
-    const data = await resp.json();
-    alert(data.data || "✅ " + _tw("执行完成", "Done"));
-  } catch (e) {
-    alert("❌ " + _tw("运行失败: ", "Run failed: ") + e.message);
+    try {
+      const result = await window.ka.runCommand(cmd);
+      const output = (result.data || "").replace(/\x1b\[[0-9;]*m/g, "").substring(0, 200);
+      results.push(`[${i + 1}/${steps.length}] ${output.split("\n")[0]}`);
+    } catch (e) {
+      results.push(`[${i + 1}/${steps.length}] ❌ ${e.message}`);
+    }
   }
+
+  alert(results.join("\n") || "✅ " + _tw("执行完成", "Done"));
 
   isRunning = false;
   renderSteps();
