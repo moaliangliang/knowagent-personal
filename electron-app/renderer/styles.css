@@ -33,6 +33,8 @@ body {
   color: #fff;
   flex-shrink: 0;
   user-select: none;
+  -webkit-app-region: drag;
+  cursor: grab;
 }
 
 #titlebar.drag-active {
@@ -51,10 +53,10 @@ body {
 #titlebar-btns {
   display: flex;
   gap: 6px;
-  -webkit-app-region: no-drag;
 }
 
 .tb-btn {
+  -webkit-app-region: no-drag;
   background: rgba(255,255,255,0.15);
   border: none;
   color: #fff;
