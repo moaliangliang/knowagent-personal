@@ -33,14 +33,40 @@ jobs:
           cd electron-app
           npm run dist:mac
 
-      - name: Upload artifacts
+      - name: Upload DMG artifacts
         uses: actions/upload-artifact@v4
         with:
           name: zhixing-mac
           path: electron-app/release/*.dmg
 
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Electron dependencies
+        run: |
+          cd electron-app
+          npm ci
+
+      - name: Build NSIS installer
+        run: |
+          cd electron-app
+          npm run dist:win
+
+      - name: Upload NSIS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhixing-win
+          path: electron-app/release/*.exe
+
   create-release:
-    needs: build-mac
+    needs: [build-mac, build-win]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -48,16 +74,22 @@ jobs:
           name: zhixing-mac
           path: artifacts
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: zhixing-win
+          path: artifacts
+
       - name: Generate checksums
         run: |
           cd artifacts
-          sha256sum *.dmg > SHA256SUMS.txt
+          sha256sum *.dmg *.exe > SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/*.dmg
+            artifacts/*.exe
             artifacts/SHA256SUMS.txt
           draft: true
           generate_release_notes: true
