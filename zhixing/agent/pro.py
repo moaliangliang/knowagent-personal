@@ -15,11 +15,14 @@ from zhixing.config import Config
 
 # ── 定价与购买链接 ──────────────────────────────
 
-PRO_PRICE_CN = "¥39/年 · ¥99 终身"
+PRO_PRICE_CN = "¥59/年 · ¥149 终身"
 PRO_URL_CN = "https://afdian.com/a/moaliangliang"
 
 PRO_PRICE_EN = "$9/year · $19 lifetime"
 PRO_URL_EN = "https://moaliangliang.lemonsqueezy.com"
+
+# 免费版对话次数限制
+FREE_MONTHLY_LIMIT = 50
 
 # License 验证服务器（私有部署，GitHub Pages 上的静态验证）
 LICENSE_SERVER = os.environ.get("KA_LICENSE_SERVER", "https://moaliangliang.github.io/zhixing-license")
