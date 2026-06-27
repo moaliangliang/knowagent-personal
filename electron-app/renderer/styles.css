@@ -125,6 +125,17 @@ body {
   gap: 6px;
 }
 
+/* 窗口放大时内容自适应 */
+@media (min-height: 700px) {
+  .msg { font-size: 14px; line-height: 1.6; }
+  #input-box { font-size: 14px; }
+}
+@media (min-height: 850px) {
+  .msg { font-size: 15px; line-height: 1.7; padding: 10px 14px; }
+  #input-box { font-size: 14px; padding: 10px 14px; }
+  #msgs { gap: 8px; padding: 10px 14px; }
+}
+
 .msg {
   padding: 8px 12px;
   border-radius: 10px;

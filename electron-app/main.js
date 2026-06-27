@@ -160,6 +160,8 @@ function createWindow() {
     show: false,
     minWidth: 320,
     minHeight: 400,
+    maxWidth: 520,
+    maxHeight: 900,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -562,13 +564,24 @@ ipcMain.handle("update-download", () => {
   }
 });
 
-// 窗口最大化
+// 窗口最大化（扩展到最大尺寸，非全屏）
 ipcMain.handle("maximize-window", () => {
   if (!mainWindow) return;
   if (mainWindow.isMaximized()) {
     mainWindow.unmaximize();
+    // 恢复上次保存的位置
+    const cfg = loadConfig();
+    if (cfg.x && cfg.y) {
+      mainWindow.setBounds({ width: WIN_WIDTH, height: WIN_HEIGHT, x: cfg.x, y: cfg.y });
+    }
   } else {
-    mainWindow.maximize();
+    const display = screen.getPrimaryDisplay().workArea;
+    mainWindow.setBounds({
+      x: display.x + Math.floor((display.width - WIN_WIDTH) / 2),
+      y: display.y + 40,
+      width: WIN_WIDTH,
+      height: display.height - 80,
+    });
   }
 });
 
