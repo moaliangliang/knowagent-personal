@@ -144,6 +144,9 @@ NL_RULES = [
     (["打开", "启动", "open"], lambda kw: ("open_app", {"name": kw}) if kw else ("help", {})),
     (["知识库", "知识", "文档", "笔记", "rag"], lambda kw: ("rag", {"subcmd": "search", "query": kw}) if kw and kw != "知识库" else ("help", {})),
     (["语音", "说话", "voice", "麦克风"], lambda _: ("voice_input", {})),
+    # VPN 公司连接
+    (["连接盛吉盛", "连盛吉盛", "盛吉盛半导体"], lambda _: ("vpn_connect", {"company": "盛吉盛"})),
+    (["连接富沃德", "连富沃德"], lambda _: ("vpn_connect", {"company": "富沃德"})),
     (["工作流", "workflow", "auto"], lambda _: None),
 ]
 
@@ -208,7 +211,7 @@ def parse_natural(text: str):
     # NL 规则优先匹配：仅对含特定关键词的文本生效
     # 必须在别名之前，防止别名"打开"/"删除"等通用词拦截
     import re as _re
-    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo|帮助|help|命令|能力|功能|commands|list)', text, re.I):
+    if _re.search(r'(?:番茄|番茄钟|番茄时钟|timer|计时|专注|代办|待办|todo|帮助|help|命令|能力|功能|commands|list|盛吉盛|富沃德|VPN|vpn)', text, re.I):
         nl_result = _match_nl_rules(text)
         if nl_result:
             return nl_result

@@ -133,6 +133,8 @@ CN_ALIASES = {
     # ── VPN（已有的） ──
     "VPN": "vpn_status",
     "代理": "vpn_status",
+    "盛吉盛VPN": "vpn_connect",
+    "富沃德VPN": "vpn_connect",
 
     # ── 企业通讯（新增）──
     "企业微信": "wecom",

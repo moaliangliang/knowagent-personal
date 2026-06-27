@@ -49,6 +49,26 @@ DEFAULT_CONFIG = {
             "password": "",
             "trusted_cert": "d5e84c6f2b426cac1cceeebdd43797f76d4ef7f885ee814d01f8460f8bd55b24",
         },
+        # 公司 VPN 配置模板
+        "companies": {
+            "盛吉盛": {
+                "name": "盛吉盛半导体",
+                "vpn_type": "atrust",
+                "vpn_host": "vpn.sgssemi.com",
+                "vpn_port": 443,
+                "http": "http://127.0.0.1:7890",
+                "https": "http://127.0.0.1:7890",
+            },
+            "富沃德": {
+                "name": "富沃德",
+                "vpn_type": "fortinet",
+                "fortinet_host": "60.190.246.42",
+                "fortinet_port": 10443,
+                "fortinet_trusted_cert": "d5e84c6f2b426cac1cceeebdd43797f76d4ef7f885ee814d01f8460f8bd55b24",
+                "http": "http://127.0.0.1:7890",
+                "https": "http://127.0.0.1:7890",
+            },
+        },
     },
     "ui": {
         "history_file": os.path.join(CONFIG_DIR, "history"),

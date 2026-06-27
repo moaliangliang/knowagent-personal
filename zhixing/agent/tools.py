@@ -1650,6 +1650,66 @@ def cmd_voice_input(params: dict) -> str:
 
 # ── 命令注册表 ───────────────────────────────────────────
 
+def cmd_vpn_connect(params: dict) -> str:
+    """连接公司 VPN。company=盛吉盛/富沃德 自动切换并连接"""
+    company = params.get("company", "") or params.get("keyword", "")
+    if not company:
+        return "❌ 需要 company 参数（盛吉盛/富沃德）"
+
+    try:
+        from zhixing.config import Config
+        cfg = Config()
+        companies = cfg.get("proxy.companies", {})
+        if not companies:
+            return "❌ 未配置公司 VPN 信息"
+
+        # 模糊匹配公司名
+        matched = None
+        for name, profile in companies.items():
+            if company in name or name in company:
+                matched = (name, profile)
+                break
+        if not matched:
+            names = "、".join(companies.keys())
+            return f"❌ 未找到公司「{company}」，已配置: {names}"
+
+        cname, profile = matched
+        vpn_type = profile.get("vpn_type", "atrust")
+
+        # 应用公司 VPN 配置
+        cfg.set("proxy.enabled", True)
+        cfg.set("proxy.vpn_type", vpn_type)
+        cfg.set("proxy.vpn_host", profile.get("vpn_host", ""))
+        cfg.set("proxy.vpn_port", profile.get("vpn_port", 443))
+        cfg.set("proxy.http", profile.get("http", "http://127.0.0.1:7890"))
+        cfg.set("proxy.https", profile.get("https", "http://127.0.0.1:7890"))
+
+        if vpn_type == "fortinet":
+            fh = profile.get("fortinet_host", "")
+            fp = profile.get("fortinet_port", 10443)
+            fc = profile.get("fortinet_trusted_cert", "")
+            if fh:
+                cfg.set("proxy.fortinet.host", fh)
+                cfg.set("proxy.fortinet.port", fp)
+            if fc:
+                cfg.set("proxy.fortinet.trusted_cert", fc)
+        cfg.save()
+
+        # 连接
+        from zhixing.agent.vpn import VpnClient
+        vpn = VpnClient(cfg)
+        if vpn_type == "fortinet":
+            result = vpn.fortinet_connect()
+        else:
+            result = vpn.check_connectivity()
+            vpn.enable_proxy()
+
+        return f"✅ 已切换到「{cname}」VPN\n{result}"
+
+    except Exception as e:
+        return f"❌ 连接失败: {e}"
+
+
 def cmd_vpn_status(params: dict) -> str:
     """VPN 工具 — 连接检测、代理管理、浏览器登录。
     action=status/enable/disable/connect/disconnect/login/fortinet/type/check/safari"""
@@ -1762,6 +1822,7 @@ COMMANDS = {
     "notes_list": cmd_notes_list,
     "contacts_search": cmd_contacts_search,
     "workflow_execute": cmd_workflow_execute,
+    "vpn_connect": cmd_vpn_connect,
     "vpn_status": cmd_vpn_status,
 }
 
@@ -1931,6 +1992,13 @@ TOOL_SCHEMAS: dict = {
             "until": {"type": "string", "description": "截止日期，如 2026-06-30"},
             "detail": {"type": "string", "description": "邮件 LocalId，查看正文"},
         },
+    },
+    "vpn_connect": {
+        "type": "object",
+        "properties": {
+            "company": {"type": "string", "description": "公司名: 盛吉盛/富沃德"},
+        },
+        "required": ["company"],
     },
     "vpn_status": {
         "type": "object",
