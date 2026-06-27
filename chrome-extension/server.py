@@ -42,6 +42,66 @@ async def handle_message(ws, msg: dict):
                 "data": f"📄 当前页面: {params.get('url', '')[:80]}",
             }
 
+        elif action == "chat":
+            # AI 对话模式 — 自然语言 → AI Orchestrator → 工具调用 → 回复
+            from zhixing.agent.orchestrator import Orchestrator
+            from zhixing.agent.usage import check_limit, add_usage, get_usage, FREE_MONTHLY_LIMIT
+            from zhixing.memory.conversation import (
+                create_session, get_openai_history, add_message,
+            )
+
+            user_input = params.get("text", "").strip()
+            session_id = params.get("session_id", "")
+
+            if not user_input:
+                return {"type": "chat_response", "data": {"reply": "请输入内容", "error": False}}
+
+            # 用量检查
+            limit_check = check_limit()
+            if not limit_check["ok"]:
+                return {"type": "chat_response", "data": {
+                    "reply": limit_check["message"],
+                    "error": False,
+                    "limit_reached": True,
+                }}
+
+            # 会话管理
+            if not session_id:
+                session_id = create_session()
+            history = get_openai_history(session_id)
+
+            # 保存用户消息
+            add_message(session_id, "user", user_input)
+
+            # 执行编排
+            orchestrator = Orchestrator()
+            result = await orchestrator.process(user_input, history=history)
+
+            reply = result.get("reply", "")
+            error = result.get("error", False)
+
+            # 保存 AI 回复
+            add_message(session_id, "assistant", reply)
+
+            # 记录用量
+            add_usage()
+
+            remaining = FREE_MONTHLY_LIMIT - get_usage()
+            tip = ""
+            if 0 < remaining <= 3:
+                tip = f"\n\n💡 本月还剩 {remaining} 次免费对话"
+
+            return {
+                "type": "chat_response",
+                "data": {
+                    "reply": reply + tip,
+                    "session_id": session_id,
+                    "tool_calls": result.get("tool_calls", []),
+                    "error": error,
+                    "remaining": remaining,
+                },
+            }
+
         elif action == "command":
             cmd = params.get("cmd", "")
             rest = params.get("rest", "")

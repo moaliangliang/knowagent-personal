@@ -22,32 +22,31 @@
 
     <!-- 标签页 -->
     <div id="tabs">
+      <div class="tab active" data-tab="ai">🤖 <span id="s-ai">AI</span></div>
+      <div class="tab" data-tab="chat">💬 <span id="s-chat">Chat</span></div>
       <div class="tab" data-tab="workflow">⚡ <span id="s-workflow">Workflow</span></div>
-      <div class="tab active" data-tab="chat">💬 <span id="s-chat">Chat</span></div>
       <div class="tab" data-tab="todo">📋 <span id="s-tasks">Tasks</span></div>
     </div>
 
-    <!-- 对话区 -->
-    <div id="msgs"></div>
-    <div id="todo-panel"></div>
-    <div id="wf-panel"></div>
-
-    <!-- 输入区 -->
-    <div id="input-wrap">
-      <div id="suggestions"></div>
-      <div id="input-area">
-        <textarea id="input-box" placeholder="Type a command..." rows="1"></textarea>
-        <button id="send-btn">➤</button>
+    <!-- AI 对话面板 -->
+    <div id="ai-panel" class="panel open">
+      <div id="ai-msgs"></div>
+      <div id="ai-input-wrap">
+        <div id="ai-suggestions"></div>
+        <div id="ai-input-area">
+          <textarea id="ai-input-box" placeholder="用自然语言控制你的 Mac..." rows="1"></textarea>
+          <button id="ai-send-btn">➤</button>
+        </div>
       </div>
     </div>
 
-    <!-- 底部栏 -->
-    <div id="footer-bar">
-      <span id="help-btn">💡 <span id="s-help">Type help for commands</span></span>
-      <span id="clear-btn">🗑️ <span id="s-clear">Clear</span></span>
-    </div>
+    <!-- 命令对话区 -->
+    <div id="msgs" class="panel"></div>
+    <div id="todo-panel" class="panel"></div>
+    <div id="wf-panel" class="panel"></div>
   </div>
   <script src="app.js"></script>
   <script src="workflow.js"></script>
+  <script src="ai.js"></script>
 </body>
 </html>

@@ -77,7 +77,8 @@ if (_lang === "zh") {
   document.querySelectorAll("[id^=s-]").forEach(el => {
     const map = {
       "s-disconnected": "未连接",
-      "s-chat": "对话",
+      "s-ai": "AI",
+      "s-chat": "命令",
       "s-tasks": "待办",
       "s-workflow": "工作流",
       "s-help": "输入 help 查看命令",
@@ -195,23 +196,25 @@ document.querySelectorAll(".tab").forEach((tab) => {
   tab.onclick = () => {
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
-    if (tab.dataset.tab === "todo") {
-      msgs.style.display = "none";
+    const tabName = tab.dataset.tab;
+
+    // 先隐藏所有面板
+    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("open"));
+
+    if (tabName === "ai") {
+      const aiPanel = document.getElementById("ai-panel");
+      if (aiPanel) aiPanel.classList.add("open");
+    } else if (tabName === "todo") {
       todoPanel.classList.add("open");
-      document.getElementById("wf-panel").classList.remove("open");
       loadTodos();
-    } else if (tab.dataset.tab === "workflow") {
-      msgs.style.display = "none";
-      todoPanel.classList.remove("open");
+    } else if (tabName === "workflow") {
       const wfPanel = document.getElementById("wf-panel");
       wfPanel.classList.add("open");
-      // 懒加载工作流编辑器
       if (!wfPanel._wfInitialized) {
         wfPanel._wfInitialized = true;
         if (typeof initWorkflowEditor === "function") {
           initWorkflowEditor(wfPanel);
         } else {
-          // 动态加载 workflow.js
           const script = document.createElement("script");
           script.src = "workflow.js";
           script.onload = () => initWorkflowEditor(wfPanel);
@@ -219,9 +222,8 @@ document.querySelectorAll(".tab").forEach((tab) => {
         }
       }
     } else {
-      msgs.style.display = "flex";
-      todoPanel.classList.remove("open");
-      document.getElementById("wf-panel").classList.remove("open");
+      // chat tab (default)
+      msgs.classList.add("open");
       setTimeout(() => input?.focus(), 200);
     }
   };
