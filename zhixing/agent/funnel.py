@@ -22,10 +22,10 @@ FUNNEL_FILE = os.path.join(CONFIG_DIR, "funnel.json")
 GITHUB_URL = "https://github.com/zhixing-ai/zhixing"
 
 # 🇨🇳 中国用户支付入口（爱发电 / 面包多 / 微信）
-SPONSOR_URL_CN = "https://afdian.com/a/你的爱发电ID"  # ¥99/年  # TODO: 替换为实际地址
+SPONSOR_URL_CN = "https://afdian.com/a/moaliangliang"
 
 # 🌍 全球用户支付入口（Lemon Squeezy / Gumroad）
-SPONSOR_URL_EN = "https://你的产品.lemonsqueezy.com"
+SPONSOR_URL_EN = "https://moaliangliang.lemonsqueezy.com"
 
 
 def _sponsor_url(lang: str = "zh") -> str:
@@ -164,7 +164,7 @@ def get_sponsor_text(lang: str = "zh") -> str:
             f"  \x1b[96m⭐\x1b[0m \x1b[1mGitHub Star\x1b[0m — 让更多人发现",
             f"     {GITHUB_URL}",
             "",
-            f"  \x1b[93m❤️\x1b[0m \x1b[1m爱发电\x1b[0m — ¥99/年 或 ¥299 永久 Pro License（中国大陆）",
+            f"  \x1b[93m❤️\x1b[0m \x1b[1m爱发电\x1b[0m — ¥39/年 或 ¥99 永久 Pro License（中国大陆）",
             f"     {cn_url}" if cn_url else "",
             "",
             f"  \x1b[93m🌍\x1b[0m \x1b[1mLemon Squeezy\x1b[0m — $19/year · $49 lifetime Pro License（Global）",
@@ -181,10 +181,10 @@ def get_sponsor_text(lang: str = "zh") -> str:
             f"  \x1b[96m⭐\x1b[0m \x1b[1mGitHub Star\x1b[0m — Help others discover",
             f"     {GITHUB_URL}",
             "",
-            f"  \x1b[93m🌍\x1b[0m \x1b[1mLemon Squeezy\x1b[0m — $19/year · $49 lifetime Pro License",
+            f"  \x1b[93m🌍\x1b[0m \x1b[1mLemon Squeezy\x1b[0m — $9/year · $19 lifetime Pro License",
             f"     {en_url}" if en_url else "",
             "",
-            f"  \x1b[93m❤️\x1b[0m \x1b[1m爱发电 (Aifadian)\x1b[0m — ¥99/year · ¥299 lifetime (China)",
+            f"  \x1b[93m❤️\x1b[0m \x1b[1m爱发电 (Aifadian)\x1b[0m — ¥39/year · ¥99 lifetime (China)",
             f"     {cn_url}" if cn_url else "",
             "",
             "\x1b[2mYour support keeps open source moving forward 🚀\x1b[0m",

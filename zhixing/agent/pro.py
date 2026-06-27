@@ -15,10 +15,10 @@ from zhixing.config import Config
 
 # ── 定价与购买链接 ──────────────────────────────
 
-PRO_PRICE_CN = "¥99/年 · ¥299 终身"
+PRO_PRICE_CN = "¥39/年 · ¥99 终身"
 PRO_URL_CN = "https://afdian.com/a/moaliangliang"
 
-PRO_PRICE_EN = "$19/year · $49 lifetime"
+PRO_PRICE_EN = "$9/year · $19 lifetime"
 PRO_URL_EN = "https://moaliangliang.lemonsqueezy.com"
 
 # License 验证服务器（私有部署，GitHub Pages 上的静态验证）
