@@ -33,7 +33,7 @@ SCENE_PATTERNS: dict[str, list[str]] = {
     ],
     "meeting_summary": [
         r"会议", r"开会", r"日程", r"日历", r"今天.*安排",
-        r"meeting", r"calendar", r"日程",
+        r"的会", r"准备.*会议", r"meeting", r"calendar",
     ],
     "system_query": [
         r"系统", r"状态", r"CPU", r"内存", r"磁盘", r"电池",
