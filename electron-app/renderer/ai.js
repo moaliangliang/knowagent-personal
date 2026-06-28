@@ -75,8 +75,15 @@ const SCENES = [
 function updateStatus(ok) {
   const el = document.getElementById("s-ai");
   if (el) {
-    el.textContent = ok ? "AI" : "AI (离线)";
-    document.getElementById("ai-send-btn").disabled = !ok;
+    el.textContent = ok ? "对话" : "对话 (离线)";
+  }
+  const btn = document.getElementById("ai-send-btn");
+  if (btn) btn.disabled = !ok;
+  // 同步更新 app.js 的 setStatus（兼容旧组件）
+  const statusText = document.getElementById("status-text");
+  if (statusText) {
+    statusText.className = ok ? "on" : "off";
+    statusText.innerHTML = ok ? "● 已连接" : "○ 未连接";
   }
 }
 
