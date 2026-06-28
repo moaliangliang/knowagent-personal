@@ -133,24 +133,42 @@ async function sendMessage() {
   input.style.height = "auto";
 
   addMsg(text, "user");
-  addMsg("⚡ 知行思考中...", "wait");
+  addMsg("⚡ 处理中...", "wait");
 
   const sendBtn = document.getElementById("ai-send-btn");
   sendBtn.disabled = true;
 
   try {
-    const response = await wsSend({
-      action: "chat",
-      params: { text, session_id: sessionId },
-    });
+    // 先尝试作为直接命令
+    let reply = "";
+    let handled = false;
 
-    const data = response.data || {};
+    try {
+      const cmdResp = await wsSend({
+        action: "command",
+        params: { cmd: text },
+      });
+      const cmdData = cmdResp.data || "";
+      if (cmdData && !cmdData.startsWith("未知命令") && !cmdData.startsWith("❌ 未知")) {
+        reply = cmdData;
+        handled = true;
+      }
+    } catch (e) {}
+
+    // 不是有效命令 → AI 对话
+    if (!handled) {
+      const response = await wsSend({
+        action: "chat",
+        params: { text, session_id: sessionId },
+      });
+      const data = response.data || {};
+      reply = data.reply || "(空回复)";
+      if (data.session_id) sessionId = data.session_id;
+    }
+
     const wait = document.querySelector(".ai-wait");
     if (wait) wait.remove();
-
-    addMsg(data.reply || "(空回复)", "bot");
-
-    if (data.session_id) sessionId = data.session_id;
+    addMsg(reply, "bot");
   } catch (e) {
     const wait = document.querySelector(".ai-wait");
     if (wait) wait.remove();

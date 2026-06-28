@@ -22,34 +22,29 @@
 
     <!-- 标签页 -->
     <div id="tabs">
-      <div class="tab active" data-tab="ai">🤖 <span id="s-ai">AI</span></div>
-      <div class="tab" data-tab="chat">💬 <span id="s-chat">Chat</span></div>
-      <div class="tab" data-tab="workflow">⚡ <span id="s-workflow">Workflow</span></div>
-      <div class="tab" data-tab="todo">📋 <span id="s-tasks">Tasks</span></div>
+      <div class="tab active" data-tab="ai">💬 <span id="s-ai">对话</span></div>
+      <div class="tab" data-tab="workflow">⚡ <span id="s-workflow">工作流</span></div>
+      <div class="tab" data-tab="todo">📋 <span id="s-tasks">待办</span></div>
     </div>
 
-    <!-- AI 对话面板 -->
+    <!-- 统一对话面板 -->
     <div id="ai-panel" class="panel open">
       <div id="ai-header">
-        <span>🤖 AI 助手</span>
+        <span>💬 知行</span>
         <div id="ai-header-right">
-          <span id="ai-usage" style="font-size:10px;color:#999;display:none;"></span>
           <span id="ai-market-btn" title="技能市场">🏪</span>
-          <span id="ai-settings-btn" title="设置 API Key">⚙️</span>
+          <span id="ai-settings-btn" title="设置">⚙️</span>
         </div>
       </div>
       <div id="ai-msgs"></div>
       <div id="ai-input-wrap">
-        <div id="ai-suggestions"></div>
         <div id="ai-input-area">
-          <textarea id="ai-input-box" placeholder="用自然语言控制你的 Mac..." rows="1"></textarea>
+          <textarea id="ai-input-box" placeholder="输入命令或自然语言..." rows="1"></textarea>
           <button id="ai-send-btn">➤</button>
         </div>
       </div>
     </div>
 
-    <!-- 命令对话区 -->
-    <div id="msgs" class="panel"></div>
     <div id="todo-panel" class="panel"></div>
     <div id="wf-panel" class="panel"></div>
   </div>
