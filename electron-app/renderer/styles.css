@@ -575,8 +575,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  flex: 1;
-  padding: 30px 20px 0;
+  flex: none;
+  padding: 80px 20px 0;
   text-align: center;
 }
 
