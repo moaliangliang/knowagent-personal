@@ -289,7 +289,7 @@ async function showSettings() {
   // 读取当前配置
   let currentKey = "";
   try {
-    currentKey = (await wsSend({ action: "get_config", params: { key: "llm_api_key" } })).data || "";
+    currentKey = (await wsSend({ action: "get_config", params: { key: "llm.api_key" } })).data || "";
   } catch(e) {}
 
   msgs.innerHTML = `
@@ -324,16 +324,19 @@ async function showSettings() {
     const status = document.getElementById("key-status");
 
     if (key) {
-      await wsSend({ action: "set_config", params: { key: "llm_api_key", value: key } });
+      await wsSend({ action: "set_config", params: { key: "llm.api_key", value: key } });
     }
     if (base) {
-      await wsSend({ action: "set_config", params: { key: "base_url", value: base } });
+      await wsSend({ action: "set_config", params: { key: "llm.base_url", value: base } });
     }
     status.textContent = "✅ 已保存！重启应用后生效";
     status.style.color = "#22c55e";
   };
 
-  document.getElementById("back-btn").onclick = renderWelcome;
+  document.getElementById("back-btn").onclick = () => {
+    // 返回后自动重新加载页面，让新配置生效
+    renderWelcome();
+  };
 }
 
 async function updateUsage() {

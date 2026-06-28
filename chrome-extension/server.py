@@ -109,8 +109,7 @@ async def handle_message(ws, msg: dict):
             key = params.get("key", "")
             value = params.get("value", "")
             if key and value:
-                key_path = key.replace("_", ".")
-                cfg.set(key_path, value)
+                cfg.set(key, value)
                 cfg.save()
                 return {"type": "result", "data": f"✅ {key} 已保存"}
             return {"type": "result", "data": "❌ 需要 key 和 value 参数"}
