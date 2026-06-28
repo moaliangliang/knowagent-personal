@@ -260,9 +260,25 @@ def test_i18n_t():
 # ═══════════════════════════════════════════════════════════
 
 def test_pro_not_active_by_default():
-    """默认不是 Pro"""
+    """默认不是 Pro（清除环境变量和配置后）"""
+    import os
+    saved_env = os.environ.pop("ZHIXING_PRO", None)
+    # 暂存配置文件中的 license_key
+    from zhixing.config import Config
+    cfg = Config()
+    saved_key = cfg.get("pro.license_key", None)
+    if saved_key:
+        cfg.set("pro.license_key", "")
+        cfg.save()
     from zhixing.agent.pro import is_pro
-    assert is_pro() is False
+    result = is_pro()
+    # 恢复
+    if saved_env is not None:
+        os.environ["ZHIXING_PRO"] = saved_env
+    if saved_key:
+        cfg.set("pro.license_key", saved_key)
+        cfg.save()
+    assert result is False
 
 
 def test_pro_features():
@@ -274,8 +290,21 @@ def test_pro_features():
 
 def test_pro_require_pro():
     """require_pro 无 License 返回提示"""
+    import os
+    saved_env = os.environ.pop("ZHIXING_PRO", None)
+    from zhixing.config import Config
+    cfg = Config()
+    saved_key = cfg.get("pro.license_key", None)
+    if saved_key:
+        cfg.set("pro.license_key", "")
+        cfg.save()
     from zhixing.agent.pro import require_pro
     result = require_pro("enhanced_timer")
+    if saved_env is not None:
+        os.environ["ZHIXING_PRO"] = saved_env
+    if saved_key:
+        cfg.set("pro.license_key", saved_key)
+        cfg.save()
     assert result is not None
     assert "Pro" in result or "🔒" in result or "❌" in result
 
