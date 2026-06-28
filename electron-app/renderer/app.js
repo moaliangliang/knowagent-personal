@@ -43,6 +43,8 @@ document.querySelectorAll(".tab").forEach((tab) => {
     const tabName = tab.dataset.tab;
     if (tabName === "ai") {
       $("ai-panel").classList.add("open");
+      // 从设置页返回时重置
+      if (!$("ai-welcome")) location.reload();
       setTimeout(() => $("ai-input-box")?.focus(), 200);
     } else if (tabName === "todo") {
       todoPanel.classList.add("open");
