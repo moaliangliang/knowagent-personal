@@ -201,15 +201,25 @@ document.querySelectorAll(".tab").forEach((tab) => {
     // 先隐藏所有面板
     document.querySelectorAll(".panel").forEach((p) => p.classList.remove("open"));
 
+    // AI 标签页：隐藏旧输入框，显示 AI 输入框
+    const inputWrap = document.getElementById("input-wrap");
+    const footerBar = document.getElementById("footer-bar");
+    const aiPanel = document.getElementById("ai-panel");
+
     if (tabName === "ai") {
-      const aiPanel = document.getElementById("ai-panel");
       if (aiPanel) aiPanel.classList.add("open");
+      if (inputWrap) inputWrap.style.display = "none";
+      if (footerBar) footerBar.style.display = "none";
     } else if (tabName === "todo") {
       todoPanel.classList.add("open");
+      if (inputWrap) inputWrap.style.display = "flex";
+      if (footerBar) footerBar.style.display = "flex";
       loadTodos();
     } else if (tabName === "workflow") {
       const wfPanel = document.getElementById("wf-panel");
       wfPanel.classList.add("open");
+      if (inputWrap) inputWrap.style.display = "flex";
+      if (footerBar) footerBar.style.display = "flex";
       if (!wfPanel._wfInitialized) {
         wfPanel._wfInitialized = true;
         if (typeof initWorkflowEditor === "function") {
@@ -224,6 +234,8 @@ document.querySelectorAll(".tab").forEach((tab) => {
     } else {
       // chat tab (default)
       msgs.classList.add("open");
+      if (inputWrap) inputWrap.style.display = "flex";
+      if (footerBar) footerBar.style.display = "flex";
       setTimeout(() => input?.focus(), 200);
     }
   };
@@ -515,6 +527,10 @@ window.ka.onLauncherResult((result) => {
 });
 
 // ── 启动 ──────────────────────────────────────
+
+// AI 为默认标签，隐藏旧输入框
+document.getElementById("input-wrap").style.display = "none";
+document.getElementById("footer-bar").style.display = "none";
 
 setTimeout(() => {
   if (!wsConnected) setStatus(false);
