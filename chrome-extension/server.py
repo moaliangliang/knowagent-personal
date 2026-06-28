@@ -109,6 +109,9 @@ async def handle_message(ws, msg: dict):
             key = params.get("key", "")
             value = params.get("value", "")
             if key and value:
+                # 拒绝打码的值写回配置文件
+                if "****" in str(value):
+                    return {"type": "result", "data": "⚠️ 检测到打码的 Key，未保存。请重新输入完整的 API Key"}
                 cfg.set(key, value)
                 cfg.save()
                 return {"type": "result", "data": f"✅ {key} 已保存"}

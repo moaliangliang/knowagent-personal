@@ -286,11 +286,8 @@ async function showSettings() {
   const welcome = document.getElementById("ai-welcome");
   if (welcome) welcome.remove();
 
-  // 读取当前配置
+  // 不预填 API Key（避免打码值被写回配置）
   let currentKey = "";
-  try {
-    currentKey = (await wsSend({ action: "get_config", params: { key: "llm.api_key" } })).data || "";
-  } catch(e) {}
 
   msgs.innerHTML = `
     <div class="ai-msg ai-bot" style="align-self:flex-start;">
