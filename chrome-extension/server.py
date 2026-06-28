@@ -120,8 +120,7 @@ async def handle_message(ws, msg: dict):
             cfg = Config()
             key = params.get("key", "")
             if key:
-                key_path = key.replace("_", ".")
-                val = cfg.get(key_path, "")
+                val = cfg.get(key, "")
                 # 掩盖 API Key
                 if "key" in key.lower() and val:
                     val = val[:8] + "****" + val[-4:] if len(val) > 12 else "****"
