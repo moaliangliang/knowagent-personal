@@ -184,6 +184,78 @@ function init() {
 
   // 设置按钮
   document.getElementById("ai-settings-btn").onclick = showSettings;
+  document.getElementById("ai-market-btn").onclick = showMarketplace;
+}
+
+async function showMarketplace() {
+  const msgs = document.getElementById("ai-msgs");
+  const welcome = document.getElementById("ai-welcome");
+  if (welcome) welcome.remove();
+
+  msgs.innerHTML = '<div class="ai-msg ai-wait" style="align-self:flex-start;">⏳ 加载技能市场...</div>';
+
+  try {
+    const resp = await wsSend({ action: "market_list", params: {} });
+    const skills = resp.data || [];
+
+    if (!Array.isArray(skills) || skills.length === 0) {
+      msgs.innerHTML = `
+        <div class="ai-msg ai-bot" style="align-self:flex-start;">
+          📭 技能市场暂无可用技能
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <div class="ai-msg ai-bot" style="align-self:flex-start;width:100%;">
+        <b>🏪 技能市场</b>
+        <p style="font-size:12px;color:#999;margin:4px 0 12px;">点击安装即可添加社区技能</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+    `;
+
+    skills.forEach(s => {
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f9fc;border-radius:10px;">
+          <span style="font-size:24px;">${s.icon || "📦"}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:13px;color:#333;">${s.name}</div>
+            <div style="font-size:11px;color:#999;">${s.description || ""}</div>
+            <div style="font-size:10px;color:#bbb;margin-top:2px;">${(s.tags || []).map(t => "#" + t).join(" ")}</div>
+          </div>
+          <button class="ai-install-btn" data-name="${s.name}" style="flex-shrink:0;padding:6px 14px;border-radius:8px;border:1px solid #667eea;background:#fff;color:#667eea;cursor:pointer;font-size:12px;font-family:inherit;">
+            安装
+          </button>
+        </div>
+      `;
+    });
+
+    html += '</div></div>';
+    msgs.innerHTML = html;
+
+    // 绑定安装按钮事件
+    document.querySelectorAll(".ai-install-btn").forEach(btn => {
+      btn.onclick = async () => {
+        const name = btn.dataset.name;
+        btn.textContent = "⏳";
+        btn.disabled = true;
+        try {
+          const result = await wsSend({ action: "skill_install", params: { name } });
+          btn.textContent = "✅ 已安装";
+          btn.style.borderColor = "#22c55e";
+          btn.style.color = "#22c55e";
+        } catch (e) {
+          btn.textContent = "❌ 失败";
+          btn.style.borderColor = "#ef4444";
+          btn.style.color = "#ef4444";
+        }
+      };
+    });
+
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch (e) {
+    msgs.innerHTML = `<div class="ai-msg ai-bot" style="align-self:flex-start;">❌ 加载失败: ${e}</div>`;
+  }
 }
 
 async function showSettings() {

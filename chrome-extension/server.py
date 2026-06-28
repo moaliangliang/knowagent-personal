@@ -129,6 +129,43 @@ async def handle_message(ws, msg: dict):
                 return {"type": "result", "data": val}
             return {"type": "result", "data": ""}
 
+        elif action == "market_list":
+            # 获取技能市场列表
+            import json as _json
+            index_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zhixing", "skills_index.json")
+            try:
+                with open(index_path) as _f:
+                    index = _json.load(_f)
+                return {"type": "result", "data": index.get("skills", [])}
+            except Exception as e:
+                return {"type": "result", "data": [], "error": str(e)}
+
+        elif action == "skill_install":
+            # 安装技能
+            name = params.get("name", "")
+            if not name:
+                return {"type": "result", "data": "❌ 需要 name 参数"}
+            from zhixing.agent.skill_manager import SkillManager
+            try:
+                sm = SkillManager()
+                # 从 index 查找安装 URL
+                import json as _json
+                index_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zhixing", "skills_index.json")
+                with open(index_path) as _f:
+                    index = _json.load(_f)
+                url = ""
+                for s in index.get("skills", []):
+                    if s["name"] == name:
+                        url = s["install_url"]
+                        break
+                if url:
+                    result = sm.install_skill(url)
+                    return {"type": "result", "data": f"✅ 技能「{name}」安装成功"}
+                else:
+                    return {"type": "result", "data": f"❌ 未找到技能「{name}」"}
+            except Exception as e:
+                return {"type": "result", "data": f"❌ 安装失败: {e}"}
+
         elif action == "command":
             cmd = params.get("cmd", "")
             rest = params.get("rest", "")
@@ -271,9 +308,23 @@ async def handler(ws):
 
 
 async def main():
-    print(f"🚀 知行 (ZhiXing) WebSocket 服务器启动 ws://localhost:{WS_PORT}")
-    print(f"   在 Chrome 中打开任意网页，侧边栏会自动连接")
+    print(f"🚀 知行 (ZhiXing) 服务启动")
+    print(f"   WebSocket: ws://localhost:{WS_PORT}   (Chrome 扩展 + Electron)")
+    print(f"   HTTP API:  http://localhost:9512      (iOS 快捷指令 + 外部调用)")
+    print()
+
+    # 同时启动 WebSocket 和 HTTP API
     async with websockets.serve(handler, "localhost", WS_PORT):
+        # 导入 HTTP API 服务器（iOS 快捷指令）
+        import importlib.util
+        _api_spec = importlib.util.spec_from_file_location(
+            "api_server",
+            os.path.join(os.path.dirname(__file__), "api_server.py"),
+        )
+        _api_mod = importlib.util.module_from_spec(_api_spec)
+        _api_spec.loader.exec_module(_api_mod)
+        run_api_server = _api_mod.run_api_server
+        api_task = asyncio.create_task(run_api_server())
         await asyncio.Future()  # 永久运行
 
 

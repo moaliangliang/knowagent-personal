@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "updated": "2026-06-28",
+  "skills": [
+    {
+      "name": "每日早报",
+      "description": "每天自动汇总天气、新闻、日历、待办，生成晨间简报",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/daily_brief.py",
+      "icon": "🌅",
+      "tags": ["日常", "自动化"]
+    },
+    {
+      "name": "截屏翻译",
+      "description": "截图识别文字后自动翻译为中文/英文",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/screenshot_translate.py",
+      "icon": "📸",
+      "tags": ["翻译", "截图"]
+    },
+    {
+      "name": "番茄钟",
+      "description": "带 GUI 窗口的番茄钟，支持暂停/继续/进度条",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/pomodoro.py",
+      "icon": "🍅",
+      "tags": ["效率", "计时"]
+    },
+    {
+      "name": "剪贴板历史",
+      "description": "记录和搜索剪贴板历史，支持收藏和类型筛选",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/clipboard_history.py",
+      "icon": "📋",
+      "tags": ["效率", "剪贴板"]
+    },
+    {
+      "name": "AI 图片分析",
+      "description": "截图后自动分析图片内容（场景/物体/文字）",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/image_analyze.py",
+      "icon": "🖼",
+      "tags": ["AI", "图片"]
+    },
+    {
+      "name": "系统监控",
+      "description": "实时监控 CPU/内存/磁盘，异常时发送通知",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/system_monitor.py",
+      "icon": "📊",
+      "tags": ["系统", "监控"]
+    },
+    {
+      "name": "会议记录",
+      "description": "会议结束后自动整理纪要，提取行动项",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/meeting_notes.py",
+      "icon": "📝",
+      "tags": ["办公", "会议"]
+    },
+    {
+      "name": "定时任务",
+      "description": "在指定时间执行预设命令（如每天9点发日报）",
+      "author": "知行团队",
+      "install_url": "https://raw.githubusercontent.com/zhixing-ai/skills/main/scheduler.py",
+      "icon": "⏰",
+      "tags": ["自动化", "定时"]
+    }
+  ]
+}
