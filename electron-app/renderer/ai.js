@@ -325,11 +325,13 @@ async function showSettings() {
 
     if (key) {
       await wsSend({ action: "set_config", params: { key: "llm.api_key", value: key } });
+      await wsSend({ action: "set_config", params: { key: "llm.provider", value: "deepseek" } });
+      await wsSend({ action: "set_config", params: { key: "llm.model", value: "deepseek-chat" } });
     }
     if (base) {
       await wsSend({ action: "set_config", params: { key: "llm.base_url", value: base } });
     }
-    status.textContent = "✅ 已保存！重启应用后生效";
+    status.textContent = "✅ 已保存！现在可以开始对话了";
     status.style.color = "#22c55e";
   };
 
