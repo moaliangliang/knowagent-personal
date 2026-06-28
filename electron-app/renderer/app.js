@@ -169,10 +169,7 @@ let panelOpen = true;
 // ── DOM 引用 ──────────────────────────────────
 
 const $ = (id) => document.getElementById(id);
-const msgs = $("msgs");
 const todoPanel = $("todo-panel");
-const input = $("input-box");
-const sendBtn = $("send-btn");
 
 // ── 标题栏 ────────────────────────────────────
 
@@ -363,82 +360,13 @@ input.oninput = () => {
   input.style.height = Math.min(input.scrollHeight, 120) + "px";
 };
 
-// ── 帮助/清除 ─────────────────────────────────
+// ── 双击标题栏打开云同步设置 ────────────
 
-$("help-btn").onclick = () => {
-  input.value = "help";
-  sendMessage();
-};
-
-$("clear-btn").onclick = () => {
-  msgs.innerHTML = '<div class="msg msg-bot">' + _t("🗑️ 会话已清除", "🗑️ Session cleared") + '</div>';
-};
-
-// ── 设置功能 ─────────────────────────────────
-
-// 双击标题栏打开设置
 document.getElementById("title-text").ondblclick = async () => {
-  const status = await window.ka.syncGetStatus().catch(() => ({}));
-  const hasToken = status.token || false;
-  const lastSync = status.lastSync || _t("从未", "Never");
-  const hasUpdate = false;
-
-  const msg = _t(
-    `📋 设置
-━━━━━━━━━━━━━━━━━━
-☁️ 云同步: ${hasToken ? "✅ 已配置" : "❌ 未配置"}
-   上次同步: ${lastSync}
-━━━━━━━━━━━━━━━━━━
-🔄 自动更新: ${hasUpdate ? "有更新可用" : "已是最新"}
-
-输入数字选择:
-1. ${hasToken ? "重新配置" : "配置"} GitHub Token
-2. ${_t("立即同步", "Sync Now")}
-3. ${_t("检查更新", "Check Updates")}
-4. ${_t("取消", "Cancel")}`,
-    `📋 Settings
-━━━━━━━━━━━━━━━━━━
-☁️ Cloud Sync: ${hasToken ? "✅ Configured" : "❌ Not configured"}
-   Last sync: ${lastSync}
-━━━━━━━━━━━━━━━━━━
-🔄 Auto Update: ${hasUpdate ? "Update available" : "Up to date"}
-
-Choose:
-1. ${hasToken ? "Reconfigure" : "Configure"} GitHub Token
-2. Sync Now
-3. Check Updates
-4. Cancel`
-  );
-
-  input.value = msg;
-  sendMessage();
-};
-
-// 监听设置命令
-const _origSend = sendMessage;
-sendMessage = async function() {
-  const text = input.value.trim();
-  if (text === "1" && msgs.lastChild?.textContent?.includes("GitHub Token")) {
-    const token = prompt(_t("输入 GitHub Personal Access Token：\n(需要 gist 权限)", "Enter GitHub Token:\n(needs gist scope)"));
-    if (token) {
-      const result = await window.ka.syncSaveToken(token);
-      addMsg(result.ok ? "✅ " + _t("Token 已保存", "Token saved") : "❌ " + _t("保存失败", "Save failed"), "bot");
-    }
-    return;
-  }
-  if (text === "2" && msgs.lastChild?.textContent?.includes("GitHub Token")) {
-    addMsg("⏳ " + _t("同步中...", "Syncing..."), "wait");
+  try {
     const result = await window.ka.syncPush();
-    document.querySelector(".msg-wait")?.remove();
-    addMsg(result.ok ? "✅ " + _t("同步成功", "Synced!") : "❌ " + (result.error || _t("同步失败", "Failed")), "bot");
-    return;
-  }
-  if (text === "3" && msgs.lastChild?.textContent?.includes("GitHub Token")) {
-    const result = await window.ka.updateCheck();
-    addMsg(result.ok ? "🔄 " + _t("正在检查更新...", "Checking...") : "❌ " + _t("检查失败", "Check failed"), "bot");
-    return;
-  }
-  _origSend.call(this);
+    // 显示短通知
+  } catch(e) {}
 };
 
 // ── 待办 ──────────────────────────────────────
