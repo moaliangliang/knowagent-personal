@@ -86,13 +86,11 @@ function renderWelcome() {
   const msgs = document.getElementById("ai-msgs");
   msgs.innerHTML = `
     <div id="ai-welcome">
-      <h2>⬡ 知行 AI</h2>
-      <p>用自然语言控制你的 Mac<br>试试下面的场景，或者直接输入任何指令</p>
+      <h2>⬡ 知行</h2>
       <div id="ai-scenes">
         ${SCENES.map(s => `
           <button class="ai-scene-btn" data-prompt="${s.prompt}">
-            <span class="ai-scene-btn-icon">${s.icon}</span>
-            ${s.label}
+            <span style="margin-right:4px;">${s.icon}</span>${s.label}
           </button>
         `).join("")}
       </div>
