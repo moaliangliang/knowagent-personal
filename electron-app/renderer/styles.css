@@ -103,17 +103,6 @@ body {
 .tb-close:hover   { filter: brightness(1.1); }
 .tb-minimize:hover { filter: brightness(1.1); }
 
-/* ── 状态栏 ─────────────────────── */
-
-#status-bar {
-  padding: 3px 14px;
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-.on { color: #22c55e; }
-.off { color: #ef4444; }
-
 /* ── 标签页 ─────────────────────── */
 
 #tabs {
@@ -444,7 +433,7 @@ body {
   display: block;
   overflow: hidden;
   position: absolute;
-  top: 82px;
+  top: 64px;
   left: 0;
   right: 0;
   bottom: 0;
